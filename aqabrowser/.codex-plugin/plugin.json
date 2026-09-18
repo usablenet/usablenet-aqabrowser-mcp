@@ -1,0 +1,52 @@
+{
+  "name": "aqa",
+  "version": "0.3.1",
+  "description": "Drive the UsableNet AQA for Agents Chrome extension from your coding agent. Start QA sessions, run accessibility evaluations, summarize results, and export annotated HTML reports — with the AQA extension installed in the user's regular Chrome.",
+  "author": {
+    "name": "UsableNet"
+  },
+  "license": "ISC",
+  "keywords": [
+    "qa",
+    "accessibility",
+    "a11y",
+    "aqa",
+    "wcag",
+    "chrome-extension",
+    "mcp",
+    "usablenet"
+  ],
+  "homepage": "https://github.com/usablenet/aqaextension-mcp",
+  "repository": "https://github.com/usablenet/aqaextension-mcp.git",
+  "skills": "./skills/",
+  "mcpServers": {
+    "UsableNet AQA Browser": {
+      "command": "node",
+      "args": [
+        "./mcp-server.js"
+      ],
+      "cwd": "."
+    }
+  },
+  "interface": {
+    "displayName": "UsableNet AQA Browser",
+    "shortDescription": "Accessibility QA from the UsableNet AQA for Agents Chrome extension",
+    "longDescription": "Drive the UsableNet AQA for Agents Chrome extension from your coding agent. Start QA sessions, run accessibility evaluations, summarize results, and export annotated HTML reports — with the AQA extension installed in the user's regular Chrome.",
+    "developerName": "UsableNet",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/usablenet/aqaextension-mcp",
+    "defaultPrompt": [
+      "Start an AQA session on this tab and analyze the page",
+      "Show me the needs-fix issues from the last AQA analysis",
+      "Export an annotated HTML accessibility report"
+    ],
+    "brandColor": "#0462A2",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
+    "screenshots": []
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "aqa",
+  "displayName": "UsableNet AQA Browser",
+  "description": "Drive the UsableNet AQA for Agents Chrome extension from your coding agent. Start QA sessions, run accessibility evaluations, summarize results, and export annotated HTML reports — with the AQA extension installed in the user's regular Chrome.",
+  "version": "0.3.1",
+  "author": {
+    "name": "UsableNet"
+  },
+  "license": "ISC",
+  "keywords": [
+    "qa",
+    "accessibility",
+    "a11y",
+    "aqa",
+    "wcag",
+    "chrome-extension",
+    "mcp",
+    "usablenet"
+  ],
+  "homepage": "https://github.com/usablenet/aqaextension-mcp",
+  "repository": "https://github.com/usablenet/aqaextension-mcp.git",
+  "logo": "assets/icon.png"
+}

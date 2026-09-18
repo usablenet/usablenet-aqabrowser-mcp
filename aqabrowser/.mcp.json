@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "UsableNet AQA Browser": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp-server.js"
+      ],
+      "env": {
+        "AQA_BRIDGE_PORT": "${user_config.bridge_port}"
+      }
+    }
+  }
+}

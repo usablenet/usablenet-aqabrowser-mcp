@@ -1,0 +1,20 @@
+{
+  "name": "UsableNet",
+  "interface": {
+    "displayName": "UsableNet"
+  },
+  "plugins": [
+    {
+      "name": "aqa",
+      "source": {
+        "source": "local",
+        "path": "./aqabrowser"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

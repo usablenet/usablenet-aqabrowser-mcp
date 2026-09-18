@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "aqa",
+  "displayName": "UsableNet AQA Browser",
+  "version": "0.3.1",
+  "description": "Drive the UsableNet AQA for Agents Chrome extension from your coding agent. Start QA sessions, run accessibility evaluations, summarize results, and export annotated HTML reports — with the AQA extension installed in the user's regular Chrome.",
+  "author": { "name": "UsableNet" },
+  "license": "ISC",
+  "homepage": "https://github.com/usablenet/aqaextension-mcp",
+  "repository": "https://github.com/usablenet/aqaextension-mcp.git",
+  "keywords": ["qa", "accessibility", "a11y", "aqa", "wcag", "chrome-extension", "mcp", "usablenet"],
+  "userConfig": {
+    "bridge_port": {
+      "type": "number",
+      "title": "Bridge port",
+      "description": "Local TCP port for the WebSocket bridge the UsableNet AQA for Agents extension connects to. Must match the port set in the extension's options (default 31773).",
+      "default": 31773
+    }
+  }
+}

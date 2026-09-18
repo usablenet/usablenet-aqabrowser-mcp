@@ -1,0 +1,5 @@
+{
+  "name": "@aqa/mcp-dist",
+  "private": true,
+  "type": "module"
+}
