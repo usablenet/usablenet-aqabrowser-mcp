@@ -34202,7 +34202,7 @@ ${LOG} If it's already paired, check that Chrome with the AQA extension is runni
       name: SERVER_NAME,
       title: "UsableNet AQA Browser",
       version: "0.3.1",
-      ...!"https://github.com/usablenet/aqaextension-mcp".includes("example.com") ? { websiteUrl: "https://github.com/usablenet/aqaextension-mcp" } : {},
+      ...!"https://github.com/usablenet/usablenet-aqabrowser-mcp".includes("example.com") ? { websiteUrl: "https://github.com/usablenet/usablenet-aqabrowser-mcp" } : {},
       // MCP 2025-11-25 server-info `icons`: the same 128px mark the extension
       // and the plugin cards use, inlined at build time (data: URI is the
       // spec's safe form for a stdio server with no origin). Hosts that render

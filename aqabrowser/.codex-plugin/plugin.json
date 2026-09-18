@@ -16,8 +16,8 @@
     "mcp",
     "usablenet"
   ],
-  "homepage": "https://github.com/usablenet/aqaextension-mcp",
-  "repository": "https://github.com/usablenet/aqaextension-mcp.git",
+  "homepage": "https://github.com/usablenet/usablenet-aqabrowser-mcp",
+  "repository": "https://github.com/usablenet/usablenet-aqabrowser-mcp.git",
   "skills": "./skills/",
   "mcpServers": {
     "UsableNet AQA Browser": {
@@ -38,7 +38,7 @@
       "Read",
       "Write"
     ],
-    "websiteURL": "https://github.com/usablenet/aqaextension-mcp",
+    "websiteURL": "https://github.com/usablenet/usablenet-aqabrowser-mcp",
     "defaultPrompt": [
       "Start an AQA session on this tab and analyze the page",
       "Show me the needs-fix issues from the last AQA analysis",

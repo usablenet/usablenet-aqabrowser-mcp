@@ -22,7 +22,7 @@ any other MCP client. Current version: `0.3.1`.
 ### Claude Code
 
 ```
-/plugin marketplace add https://github.com/usablenet/aqaextension-mcp.git
+/plugin marketplace add https://github.com/usablenet/usablenet-aqabrowser-mcp.git
 /plugin install aqa@UsableNet
 ```
 
@@ -32,7 +32,7 @@ Run `/reload-plugins` (or start a new session) and `/help` lists the
 ### Codex (CLI and the ChatGPT desktop app)
 
 ```
-codex plugin marketplace add https://github.com/usablenet/aqaextension-mcp.git
+codex plugin marketplace add https://github.com/usablenet/usablenet-aqabrowser-mcp.git
 codex plugin add aqa@UsableNet
 ```
 
@@ -43,12 +43,14 @@ installs with one click.
 ### Cursor
 
 From the agent window: **Customize** → **Plugins** → **+ Add** →
-**From Local Repo** → select a local clone of this repository.
+**From Local Repo** → select the `aqabrowser/` folder of a local clone of
+this repository (the repository root is the marketplace catalog; the plugin
+lives in that folder).
 
 ### VS Code (GitHub Copilot)
 
 From the Chat panel: gear icon → **Plugins** → **Install Plugin from
-Source** → enter `usablenet/aqaextension-mcp`.
+Source** → enter `usablenet/usablenet-aqabrowser-mcp`.
 
 ### Other MCP clients
 

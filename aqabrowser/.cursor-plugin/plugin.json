@@ -17,7 +17,7 @@
     "mcp",
     "usablenet"
   ],
-  "homepage": "https://github.com/usablenet/aqaextension-mcp",
-  "repository": "https://github.com/usablenet/aqaextension-mcp.git",
+  "homepage": "https://github.com/usablenet/usablenet-aqabrowser-mcp",
+  "repository": "https://github.com/usablenet/usablenet-aqabrowser-mcp.git",
   "logo": "assets/icon.png"
 }
