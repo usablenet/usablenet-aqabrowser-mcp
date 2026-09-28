@@ -85,7 +85,7 @@ When `methodologyApplied` is `false`, `steps` is `[]` and `outcome` is your reas
 
 ### `inconclusive`
 
-Use `outcome: 'inconclusive'` when a required signal failed or a methodology question can't be settled from the pixels. Examples: `screenshot-failed` (debugger detached mid-call), `issue-not-found` (stale issueId), `selector-not-found` (page navigated since analysis), or genuinely ambiguous pixels (semi-transparent overlay where you can't tell if it crosses the readability threshold). Be honest — `inconclusive, low` beats a confident wrong answer.
+Use `outcome: 'inconclusive'` when a required signal failed or a methodology question can't be settled from the pixels. Examples: `screenshot-failed` (debugger detached mid-call), `tab-not-visible` (the inspected tab's window is minimized or covered and the extension could not bring it on screen — relay the result's `hint` so the user shows the tab before a rerun), `issue-not-found` (stale issueId), `selector-not-found` (page navigated since analysis), or genuinely ambiguous pixels (semi-transparent overlay where you can't tell if it crosses the readability threshold). Be honest — `inconclusive, low` beats a confident wrong answer.
 
 ## Hard rules
 

@@ -6,7 +6,7 @@ metadata:
   user-summary: "Save a sequence of browser steps with AQA checkpoints as a named flow, run a saved flow, or list them."
 ---
 
-A flow is a reusable QA script that walks the inspected tab through a sequence of browser actions (navigate, click, hover, type, select, wait) with one or more AQA `analyze` checkpoints. Flow files live under `.aqa/flows/<name>.json` at the workspace root (the MCP client's first root, or the server's anchor directory on hosts without roots) and are authored once, then re-run deterministically.
+A flow is a reusable QA script that walks the inspected tab through a sequence of browser actions (navigate, click, hover, type, select, press, wait) with one or more AQA `analyze` checkpoints. Flow files live under `.aqa/flows/<name>.json` at the workspace root (the MCP client's first root, or the server's anchor directory on hosts without roots) and are authored once, then re-run deterministically.
 
 Delegate everything to the **`aqa-flow` subagent** — it handles author / run / list modes and writes only under `.aqa/flows/`. Pass the user's full prompt through; the agent picks the mode from the wording. Don't pre-route or paraphrase the prompt — the agent reads the verbs ("save", "run", "list", or step prose) to decide.
 
@@ -44,7 +44,20 @@ For hover menus (CSS `:hover` dropdowns, JS-driven tooltips), use the `hover` ac
 ]
 ```
 
+For keyboard checks (does Escape close the dialog, is the submenu reachable with the arrow keys), use the `press` action — a real key event, optionally after focusing a `target`:
+
+```json
+[
+  { "action": "press", "key": "Tab", "target": { "selector": "nav > li.about > a", "text": "About" } },
+  { "action": "press", "key": "ArrowDown" },
+  { "action": "waitFor", "target": { "text": "Ex libris", "role": "menuitem" } },
+  { "action": "press", "key": "Escape" }
+]
+```
+
 **Dual selectors** — each `target` carries a strict `selector` PLUS a `text` / `role+name` fallback. The runner tries strict first; the fallback keeps the flow working when the page changes.
+
+**Frames** — when a step's target lives inside an iframe (an embedded comment editor, a Like widget, a payment form — cross-origin ones included), the step carries `"frame": { "urlIncludes": "<part of the frame URL>" }` (or `{ "index": n }` from `aqa_list_frames`) next to its `target`, and the runner passes it to the tool as-is. Author pass: when the page's `aqa_describe_page` output lacks the element the user names, call `aqa_list_frames` and describe the likely frame with `frame` before giving up. A `frame` never changes the session's target frame, so the `analyze` checkpoints keep evaluating the page.
 
 **Per-step failure mode** — each step accepts `onError: "stop" | "continue"` (default `"stop"`). The author pass only sets `"continue"` when the user explicitly asks for it.
 

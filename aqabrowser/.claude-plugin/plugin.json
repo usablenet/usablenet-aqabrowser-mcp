@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "aqa",
   "displayName": "UsableNet AQA Browser",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "description": "Drive the UsableNet AQA for Agents Chrome extension from your coding agent. Start QA sessions, run accessibility evaluations, summarize results, and export annotated HTML reports — with the AQA extension installed in the user's regular Chrome.",
   "author": { "name": "UsableNet" },
   "license": "ISC",
@@ -13,7 +13,7 @@
     "bridge_port": {
       "type": "number",
       "title": "Bridge port",
-      "description": "Local TCP port for the WebSocket bridge the UsableNet AQA for Agents extension connects to. Must match the port set in the extension's options (default 31773).",
+      "description": "Base port of the WebSocket bridge slot range this server probes (base to base+7, first free port wins). The UsableNet AQA for Agents extension always dials 127.0.0.1:31773-31780 and has no port setting, so leave the default unless you also run a custom extension build — a base outside that range never pairs.",
       "default": 31773
     }
   }

@@ -2,7 +2,7 @@
   "name": "aqa",
   "displayName": "UsableNet AQA Browser",
   "description": "Drive the UsableNet AQA for Agents Chrome extension from your coding agent. Start QA sessions, run accessibility evaluations, summarize results, and export annotated HTML reports — with the AQA extension installed in the user's regular Chrome.",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "author": {
     "name": "UsableNet"
   },

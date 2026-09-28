@@ -3,7 +3,7 @@
 Drive the UsableNet AQA for Agents Chrome extension from your coding agent. Start QA sessions, run accessibility evaluations, summarize results, and export annotated HTML reports — with the AQA extension installed in the user's regular Chrome.
 
 Works with **Claude Code**, **Codex**, **Cursor**, **VS Code Copilot**, and
-any other MCP client. Current version: `0.3.1`.
+any other MCP client. Current version: `0.3.3`.
 
 ## What you need
 
@@ -16,6 +16,11 @@ any other MCP client. Current version: `0.3.1`.
 3. **A coding agent on the same machine as Chrome** — one of the hosts
    below. Sandboxed agents (for example Claude Cowork) cannot reach your
    Chrome; see Troubleshooting.
+4. **Node.js 20 or newer** — the plugin's MCP server runs on it. You
+   don't have to check first: if it is missing (or a desktop app cannot see
+   it), the plugin does not fail silently — ask the agent for an AQA check
+   and it explains how to install Node.js with the installer from
+   nodejs.org, no command line needed. Then quit and reopen the app.
 
 ## Install
 
@@ -57,6 +62,10 @@ Source** → enter `usablenet/usablenet-aqabrowser-mcp`.
 Run `node aqabrowser/print-config.js` — it prints ready-to-paste registration
 snippets (VS Code `code --add-mcp`, Codex `config.toml`, Gemini CLI, and
 generic `mcpServers` JSON) with this install's absolute paths filled in.
+The registered command is the launcher `aqabrowser/launcher/aqa-mcp`
+(`.cmd` on Windows), which finds Node.js for the server and, when there is
+none, tells the agent how to install it; `--node` prints the plain
+`node mcp-server.js` form for a host that does not run the launcher.
 To give the agent the same task guidance the plugin hosts get, copy
 `aqabrowser/skills/` into your project's `.github/skills/` (Copilot) or your
 client's equivalent.
@@ -151,12 +160,15 @@ there they resolve under your home directory (`~/reports`, `~/.aqa/flows`)
 
 ## Configuration
 
-**Bridge port.** The plugin and the extension must agree on it (default
-`31773`). Change it with the plugin's **Bridge port** option (Claude Code
-`/plugin`), or with `AQA_BRIDGE_PORT` / `--bridge-port` for manual
-registrations — **and** in the extension's **Settings → Connection**. Up to
-eight agent sessions can run at once, each on the next free port; the
-extension's **Connections** list shows which host holds each one.
+**Bridge port.** The MCP server binds the first free port of
+`127.0.0.1:31773-31780` and the extension dials that whole range, so nothing
+needs to match — the extension has no port setting. Up to eight agent
+sessions can run at once, each on the next free port; the extension's
+**Connections** list shows which host holds each one. The plugin's **Bridge
+port** option (Claude Code `/plugin`), `AQA_BRIDGE_PORT` and
+`--bridge-port` move only the server's base port: leave them at `31773`
+unless you also run a custom extension build, because a base outside that
+range never pairs.
 
 **Workspace anchor.** `--workspace-dir <dir>` (or `AQA_WORKSPACE_DIR`)
 sets where relative report and flow paths resolve for hosts that don't share
@@ -166,14 +178,25 @@ The plugin's per-host `print-config.js` snippets show the full command.
 
 ## Troubleshooting
 
-- **AQA tools fail because the extension isn't connected.** The error names
-  one of three situations, and asking for the bridge setup gives the same
-  diagnosis with the steps. *"…pairing code does NOT match…"*: paste the
+- **AQA tools fail because the extension isn't connected.** Right after the
+  host starts, tools wait up to ~30 s for the extension to find the new
+  server (it probes the bridge ports every ≤30 s), and the bridge setup check
+  reports `starting` meanwhile — nothing to fix, just retry. Otherwise the
+  error names one of three situations, and asking for the bridge setup gives
+  the same diagnosis with the steps. *"…pairing code does NOT match…"*: paste the
   current code into the extension and Save — no reload needed. *"…disconnected
   from the bridge…"*: Chrome put the extension to sleep; it reconnects within
   ~30s, just retry. *"No pairing attempt … has reached this server"*: reload
   the extension at `chrome://extensions`, make sure its pairing-code field
-  isn't empty and the bridge toggle is on, and check the port matches.
+  isn't empty and the bridge toggle is on, and that the server's port is
+  inside `31773-31780`.
+- **The agent says Node.js is missing or too old.** The MCP server runs on
+  Node.js; without one the plugin stands in with the install steps instead
+  of the tools. Install the LTS from https://nodejs.org/en/download (the
+  .pkg / .msi installer needs no command line), then fully quit and reopen
+  the app — desktop apps only see a new install after a restart. If Node.js
+  is installed but the app cannot find it, set `AQA_NODE` in the server's
+  environment to the full path of the node executable.
 - **"every bridge slot is busy".** Eight sessions are alive, or stale
   servers are holding the ports. Close sessions you don't need; the
   extension's **Connections** list names the host behind each one. Stale

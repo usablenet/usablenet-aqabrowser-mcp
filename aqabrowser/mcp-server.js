@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+if (Number(process.versions.node.split('.')[0]) < 20) { console.error("[UsableNet AQA Browser] Node.js " + process.version + " is too old — this server needs Node.js 20 or newer. Install the LTS from https://nodejs.org/en/download (the .pkg / .msi installer needs no command line), then fully quit and reopen the app that runs this agent."); process.exit(1); }
 import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -10602,6 +10603,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir as mkdir2, readFile as readFile2, readdir, rename, stat, writeFile as writeFile2 } from "node:fs/promises";
 import os from "node:os";
 import path3 from "node:path";
+import { setTimeout as delay2 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { parseArgs as parseNodeArgs } from "node:util";
 
@@ -10712,7 +10714,7 @@ var e = class e2 {
   }
 };
 
-// ../shared/src/evaluation/a11y.ts
+// ../../node_modules/@usablenet/aqa-evaluation/dist/index.js
 function getBackgrounds(startIndex, a11yDocument) {
   const { tree } = a11yDocument;
   const backgrounds = [];
@@ -10800,17 +10802,104 @@ function contrastRatio(backgrounds, foreground) {
   const bg = finalBackground(backgrounds);
   return bg.contrast(new e(foreground)).ratio;
 }
-
-// ../shared/src/evaluation/digest.ts
+function contrastContext(startIndex, a11yDocument) {
+  const backgrounds = getBackgrounds(startIndex, a11yDocument);
+  const foreground = getForeground(startIndex, a11yDocument);
+  let background = null;
+  try {
+    background = finalBackground(backgrounds).toString();
+  } catch {
+  }
+  let ratio = null;
+  if (background !== null) {
+    try {
+      ratio = contrastRatio(backgrounds, foreground);
+    } catch {
+    }
+  }
+  return { foreground, background, contrastRatio: ratio };
+}
+var LARGE_TEXT_BOLD_PX = 14 * 4 / 3;
+var NotesStatus = /* @__PURE__ */ ((NotesStatus2) => {
+  NotesStatus2["NEEDS_FIX"] = "needsFix";
+  NotesStatus2["MANUALLY"] = "checkManually";
+  NotesStatus2["DISMISSED"] = "reviewedOk";
+  return NotesStatus2;
+})(NotesStatus || {});
+var NotesSeverity = /* @__PURE__ */ ((NotesSeverity2) => {
+  NotesSeverity2["HIGH"] = "high";
+  NotesSeverity2["MEDIUM"] = "medium";
+  NotesSeverity2["LOW"] = "low";
+  return NotesSeverity2;
+})(NotesSeverity || {});
+var NotesComplexity = /* @__PURE__ */ ((NotesComplexity2) => {
+  NotesComplexity2["EASY"] = "easy";
+  NotesComplexity2["AVERAGE"] = "average";
+  NotesComplexity2["HARD"] = "hard";
+  return NotesComplexity2;
+})(NotesComplexity || {});
+var NotesResponsibilities = /* @__PURE__ */ ((NotesResponsibilities2) => {
+  NotesResponsibilities2["CONTENT"] = "content";
+  NotesResponsibilities2["DESIGN"] = "design";
+  NotesResponsibilities2["DEV"] = "development";
+  return NotesResponsibilities2;
+})(NotesResponsibilities || {});
+var NotesTechnologies = /* @__PURE__ */ ((NotesTechnologies2) => {
+  NotesTechnologies2["ARIA"] = "aria";
+  NotesTechnologies2["CSS"] = "css";
+  NotesTechnologies2["HTML"] = "html";
+  NotesTechnologies2["JS"] = "js";
+  NotesTechnologies2["MEDIA"] = "media";
+  NotesTechnologies2["SVG"] = "svg";
+  return NotesTechnologies2;
+})(NotesTechnologies || {});
+var ErrorType = /* @__PURE__ */ ((ErrorType2) => {
+  ErrorType2["APPLICATION_ERROR"] = "application-error";
+  ErrorType2["API"] = "api-error";
+  ErrorType2["RULESET"] = "missing-ruleset";
+  ErrorType2["CANCEL"] = "api-request-cancelled";
+  ErrorType2["CSV"] = "csv-error";
+  ErrorType2["NO_TEAM"] = "no-team";
+  ErrorType2["PICKER"] = "picker-error";
+  ErrorType2["USER_KEY"] = "invalid-user-key";
+  ErrorType2["NO_SESSION"] = "no-session";
+  ErrorType2["SESSION_EXPIRED"] = "session-expired";
+  ErrorType2["SESSION_FAILURE"] = "session-failure";
+  ErrorType2["SESSION_START"] = "session-start";
+  ErrorType2["SESSION_RESET"] = "session-reset";
+  ErrorType2["DOCUMENT_UPLOAD"] = "document-upload";
+  ErrorType2["DOCUMENT_DOWNLOAD"] = "document-download";
+  ErrorType2["FRAME_NOT_FOUND"] = "frame-not-found";
+  ErrorType2["PAGE_UNREADABLE"] = "page-unreadable";
+  ErrorType2["PAGE_NOT_TESTABLE"] = "page-not-testable";
+  ErrorType2["FRAME_NOT_TESTABLE"] = "frame-not-testable";
+  ErrorType2["ANALYZE_PAGE"] = "analyze-page";
+  ErrorType2["CONNECTION"] = "connection-error";
+  ErrorType2["NO_ACTIVE_TAB"] = "no-active-tab";
+  ErrorType2["NO_CACHED_ANALYSIS"] = "no-cached-analysis";
+  ErrorType2["MOCKED"] = "mocked";
+  ErrorType2["RECORDER"] = "recorder";
+  ErrorType2["VIEWPORT_TEST"] = "viewport-test";
+  return ErrorType2;
+})(ErrorType || {});
 var DEFAULT_OPTIONS = {
   topIssues: 10,
   sampleSelectorsPerRule: 5,
   maxSelectors: 100
 };
 var SEVERITY_RANK = {
-  ["high" /* HIGH */]: 0,
-  ["medium" /* MEDIUM */]: 1,
-  ["low" /* LOW */]: 2
+  [
+    "high"
+    /* HIGH */
+  ]: 0,
+  [
+    "medium"
+    /* MEDIUM */
+  ]: 1,
+  [
+    "low"
+    /* LOW */
+  ]: 2
 };
 function isDataResponse(r) {
   return "notes" in r && Array.isArray(r.notes);
@@ -10835,18 +10924,21 @@ function buildSummary(notes) {
   };
   for (const note of notes) {
     const { status, severity } = note;
-    if (status === "needsFix" /* NEEDS_FIX */) summary.byStatus.needsFix += 1;
-    else if (status === "checkManually" /* MANUALLY */) summary.byStatus.manually += 1;
+    if (status === "needsFix") summary.byStatus.needsFix += 1;
+    else if (status === "checkManually") summary.byStatus.manually += 1;
     else summary.byStatus.dismissed += 1;
-    if (severity === "high" /* HIGH */) summary.bySeverity.high += 1;
-    else if (severity === "medium" /* MEDIUM */) summary.bySeverity.medium += 1;
+    if (severity === "high") summary.bySeverity.high += 1;
+    else if (severity === "medium") summary.bySeverity.medium += 1;
     else summary.bySeverity.low += 1;
   }
   return summary;
 }
 function buildRulesNeedingFix(notes, sampleSelectorsPerRule) {
   const byRule = /* @__PURE__ */ new Map();
-  for (const note of notes.filter((n) => n.status === "needsFix" /* NEEDS_FIX */)) {
+  for (const note of notes.filter(
+    (n) => n.status === "needsFix"
+    /* NEEDS_FIX */
+  )) {
     let entry = byRule.get(note.ruleId);
     if (!entry) {
       entry = {
@@ -10877,8 +10969,8 @@ function buildTopIssues(data, topN) {
     const sa = SEVERITY_RANK[a.severity];
     const sb = SEVERITY_RANK[b.severity];
     if (sa !== sb) return sa - sb;
-    const sta = a.status === "needsFix" /* NEEDS_FIX */ ? 0 : 1;
-    const stb = b.status === "needsFix" /* NEEDS_FIX */ ? 0 : 1;
+    const sta = a.status === "needsFix" ? 0 : 1;
+    const stb = b.status === "needsFix" ? 0 : 1;
     return sta - stb;
   });
   const out = [];
@@ -10891,10 +10983,10 @@ function buildTopIssues(data, topN) {
     let bg = null;
     let visibility = null;
     if (hasTreeNode) {
-      const backgrounds = getBackgrounds(unId, data.accessibilityDocument);
-      fg = getForeground(unId, data.accessibilityDocument);
-      ratio = contrastRatio(backgrounds, fg);
-      bg = finalBackground(backgrounds).toString();
+      const contrast = contrastContext(unId, data.accessibilityDocument);
+      fg = contrast.foreground;
+      ratio = contrast.contrastRatio;
+      bg = contrast.background;
       const v = visibilityStatus(unId, data.accessibilityDocument);
       if (v) visibility = { labels: v.labels };
     }
@@ -10924,7 +11016,7 @@ function buildSelectors(notes, cap) {
     const { status } = note;
     const [sel] = note.selectors;
     if (!sel) {
-    } else if (status === "needsFix" /* NEEDS_FIX */) {
+    } else if (status === "needsFix") {
       if (auto.length < cap) auto.push(sel);
     } else if (manual.length < cap) {
       manual.push(sel);
@@ -10968,18 +11060,20 @@ function matchesStructured(note, query) {
   if (query.auto !== void 0 && note.auto !== query.auto) return false;
   return true;
 }
-
-// ../shared/src/evaluation/labels.ts
 function propLabel(list, id) {
   if (id == null) return "";
   return list?.find((entry) => entry.id === id)?.label ?? id;
 }
-
-// ../shared/src/evaluation/notes.ts
+var ISSUE_QUERY_DEFAULT_LIMIT = 50;
+var ISSUE_QUERY_MAX_LIMIT = 200;
+var RANK_DEFAULT_LIMIT = 10;
+var RANK_MAX_LIMIT = 200;
+var REVIEW_GROUP_DEFAULT_LIMIT = 50;
+var REVIEW_GROUP_MAX_LIMIT = 200;
 function buildHeatmapOccurrences(notes) {
   const out = {};
   for (const note of notes) {
-    if (note.status === "needsFix" /* NEEDS_FIX */) {
+    if (note.status === "needsFix") {
       for (const selector of note.selectors) {
         if (selector) {
           out[selector] = (out[selector] ?? 0) + 1;
@@ -10989,45 +11083,6 @@ function buildHeatmapOccurrences(notes) {
   }
   return out;
 }
-
-// ../shared/src/evaluation/ranking.ts
-var PRESETS = {
-  impact: {
-    sortBy: "composite",
-    weights: { severity: 5, elementIssueCount: 3, ruleFrequency: 1, status: 1 },
-    filters: { status: "needsFix" /* NEEDS_FIX */ }
-  },
-  "quick-wins": {
-    sortBy: "composite",
-    weights: { complexity: 5, auto: 3, ruleFrequency: 2, severity: 1 },
-    filters: { status: "needsFix" /* NEEDS_FIX */ }
-  },
-  conformance: {
-    sortBy: "composite",
-    weights: { wcagLevel: 5, severity: 3, auto: 2 },
-    filters: { status: "needsFix" /* NEEDS_FIX */ }
-  },
-  "review-first": {
-    sortBy: "composite",
-    weights: { visibility: 3, severity: 2, ruleFrequency: 1 },
-    filters: { status: "checkManually" /* MANUALLY */ }
-  }
-};
-var SEVERITY_AXIS = {
-  ["high" /* HIGH */]: 1,
-  ["medium" /* MEDIUM */]: 0.66,
-  ["low" /* LOW */]: 0.33
-};
-var STATUS_AXIS = {
-  ["needsFix" /* NEEDS_FIX */]: 1,
-  ["checkManually" /* MANUALLY */]: 0.5,
-  ["reviewedOk" /* DISMISSED */]: 0
-};
-var COMPLEXITY_AXIS = {
-  ["easy" /* EASY */]: 1,
-  ["average" /* AVERAGE */]: 0.5,
-  ["hard" /* HARD */]: 0.2
-};
 
 // ../shared/src/protocol.ts
 var BRIDGE_PLUGIN_DEFAULT_PORT = 31773;
@@ -12568,7 +12623,7 @@ function buildReviewSteps(methodology) {
 }
 function buildReviewNotes(evaluation, status) {
   const { descriptions, issueProperties } = evaluation;
-  const manual = status === "checkManually" /* MANUALLY */;
+  const manual = status === NotesStatus.MANUALLY;
   const statusLabel = propLabel(issueProperties.statuses, status);
   return evaluation.notes.filter((note) => note.status === status).map((note) => {
     const remediation = getRemediation(descriptions, note);
@@ -12650,7 +12705,7 @@ function buildHeatmapBody(heatmapImage) {
 function buildHtmlReport(options) {
   const { evaluation, pageUrl, ruleset, elementCrops, heatmapImage, filtered = false, includeManualReview = false } = options;
   const { notes } = evaluation;
-  const needsFix = notes.filter((n) => n.status === "needsFix" /* NEEDS_FIX */);
+  const needsFix = notes.filter((n) => n.status === NotesStatus.NEEDS_FIX);
   const bySeverity = { high: 0, medium: 0, low: 0 };
   for (const n of needsFix) bySeverity[severityKey(n)] += 1;
   const { high: highCount, medium: mediumCount, low: lowCount } = bySeverity;
@@ -12660,10 +12715,10 @@ function buildHtmlReport(options) {
   const byTechnology = countBy(needsFix, (n) => propLabel(issueProperties.technologies, n.technology) || "Unknown");
   const detailed = buildDetailedIssues(needsFix, evaluation, { elementCrops, includeManualReview });
   const reviewSections = includeManualReview ? fillTemplate(TEMPLATE.fragments["review-sections"], {
-    checkManuallyCount: String(notes.filter((n) => n.status === "checkManually" /* MANUALLY */).length),
-    reviewedOkCount: String(notes.filter((n) => n.status === "reviewedOk" /* DISMISSED */).length),
-    manualNotes: buildReviewNotes(evaluation, "checkManually" /* MANUALLY */),
-    reviewedNotes: buildReviewNotes(evaluation, "reviewedOk" /* DISMISSED */)
+    checkManuallyCount: String(notes.filter((n) => n.status === NotesStatus.MANUALLY).length),
+    reviewedOkCount: String(notes.filter((n) => n.status === NotesStatus.DISMISSED).length),
+    manualNotes: buildReviewNotes(evaluation, NotesStatus.MANUALLY),
+    reviewedNotes: buildReviewNotes(evaluation, NotesStatus.DISMISSED)
   }) : "";
   const html = fillTemplate(TEMPLATE.shell, {
     reportTitle: includeManualReview ? "Accessibility audit" : "Accessibility issues (Needs fix only)",
@@ -28357,16 +28412,34 @@ import { createHmac, randomBytes as randomBytes2, timingSafeEqual } from "node:c
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 var BRIDGE_SECRET_DIR = path.join(homedir(), ".aqa");
 var BRIDGE_SECRET_PATH = path.join(BRIDGE_SECRET_DIR, "bridge-secret");
-async function loadOrCreateBridgeSecret() {
+var SECRET_RACE_RETRIES = 10;
+var SECRET_RACE_RETRY_MS = 50;
+async function readBridgeSecret() {
   try {
-    const existing = (await readFile(BRIDGE_SECRET_PATH, "utf8")).trim();
-    if (existing.length > 0) return { secret: existing, created: false };
+    const stored = (await readFile(BRIDGE_SECRET_PATH, "utf8")).trim();
+    return stored.length > 0 ? stored : null;
   } catch {
+    return null;
   }
+}
+async function loadOrCreateBridgeSecret() {
+  const existing = await readBridgeSecret();
+  if (existing !== null) return { secret: existing, created: false };
   const secret = randomBytes2(32).toString("base64");
   await mkdir(BRIDGE_SECRET_DIR, { recursive: true });
+  try {
+    await writeFile(BRIDGE_SECRET_PATH, secret, { mode: 384, flag: "wx" });
+    return { secret, created: true };
+  } catch (err) {
+    if (err.code !== "EEXIST") throw err;
+  }
+  for (let attempt = 0; attempt < SECRET_RACE_RETRIES; attempt += 1) {
+    const winner = await delay(SECRET_RACE_RETRY_MS).then(readBridgeSecret);
+    if (winner !== null) return { secret: winner, created: false };
+  }
   await writeFile(BRIDGE_SECRET_PATH, secret, { mode: 384 });
   return { secret, created: true };
 }
@@ -28627,16 +28700,16 @@ var GLOSSARY = [
   {
     term: "flow",
     aliases: ["qa flow", "user flow", "scripted flow", "flow file", "qa script"],
-    summary: "A reusable QA script that walks the inspected tab through a sequence of browser actions (navigate, click, type, select, wait) with one or more AQA `analyze` checkpoints. Authored in natural language, persisted as a structured JSON file under `.aqa/flows/<name>.json`, then re-run deterministically via the `aqa_flow_*` tools.",
-    details: 'Two phases:\n\n  **Author mode** (input = natural-language prose like "open the home page, click the hamburger menu, run AQA"). The agent walks the page with `aqa_flow_describe_page` to ground each step on real DOM, resolves each user-named target to a stable CSS selector PLUS a `text` / `role+name` fallback, and writes the result to `.aqa/flows/<name>.json` via `aqa_flow_save`. The user reviews and edits the file directly when they want changes.\n\n  **Run mode** (input = a flow name or "rerun X"). The agent loads the file via `aqa_flow_load`, calls `aqa_start_session` once, walks each step in order via the matching `aqa_flow_*` tool, and calls `aqa_analyze_page` at each `analyze` step. Per-step `onError: "stop" | "continue"` (default `"stop"`) controls whether a failed step aborts the run or skips and continues. The final response is a per-step status table plus one digest per checkpoint.\n\n  Scope: same-tab in-session only. Flows can\'t open new tabs, can\'t cross-origin without re-starting the session, and can\'t handle login forms beyond `type` + `click` (no captcha, no MFA, no popup auth).',
-    mapsTo: "aqa_flow_navigate / Click / Type / Select / WaitFor / DescribePage / Save / Load / List, plus aqa_start_session and aqa_analyze_page",
+    summary: "A reusable QA script that walks the inspected tab through a sequence of browser actions (navigate, click, hover, type, select, press, wait) with one or more AQA `analyze` checkpoints. Authored in natural language, persisted as a structured JSON file under `.aqa/flows/<name>.json`, then re-run deterministically through the `aqa_interact_*` tools.",
+    details: 'Two phases:\n\n  **Author mode** (input = natural-language prose like "open the home page, click the hamburger menu, run AQA"). The agent walks the page with `aqa_describe_page` to ground each step on real DOM, resolves each user-named target to a stable CSS selector PLUS a `text` / `role+name` fallback, and writes the result to `.aqa/flows/<name>.json` via `aqa_flow_save`. The user reviews and edits the file directly when they want changes.\n\n  **Run mode** (input = a flow name or "rerun X"). The agent loads the file via `aqa_flow_load`, calls `aqa_start_session` once, walks each step in order via the matching `aqa_flow_*` tool, and calls `aqa_analyze_page` at each `analyze` step. Per-step `onError: "stop" | "continue"` (default `"stop"`) controls whether a failed step aborts the run or skips and continues. The final response is a per-step status table plus one digest per checkpoint.\n\n  Scope: same-tab in-session only. Flows can\'t open new tabs, can\'t cross-origin without re-starting the session, and can\'t handle login forms beyond `type` + `click` (no captcha, no MFA, no popup auth).',
+    mapsTo: "aqa_interact_navigate / _click / _hover / _type / _select / _press / _wait_for, aqa_describe_page (authoring snapshot), aqa_flow_save / _load / _list, plus aqa_start_session and aqa_analyze_page",
     related: ["step", "checkpoint", "session", "panel"]
   },
   {
     term: "step",
     aliases: ["flow step", "flow action"],
-    summary: 'One action inside a flow file. Shapes: `{ action: "navigate", url }`, `{ action: "click" | "hover" | "type" | "select" | "waitFor", target: { selector?, text?, role?, name? }, \u2026 }`, or `{ action: "analyze", label? }`. Every step accepts an optional `onError: "stop" | "continue"` (default `"stop"`).',
-    details: "The `target` block carries DUAL selectors: a strict CSS `selector` AND any of `text` / `role` / `name` as a fallback. The runner tries `selector` first, then `text`(+`role`), then `name`(+`role`), and picks the first one that resolves. If you only know what the element *looks like* but not its DOM, you can omit `selector` and pass `text` + `role` alone \u2014 the runner produces a stable CSS path at run time. Author-time `aqa_flow_describe_page` will usually fill in both.\n\n  Action-specific fields: `value` for `type` / `select`; `label` for `select` (alternative to value); `clear: boolean` for `type` (default true); `timeoutMs` for any waitable action (per-tool default \u2014 5s for actions, 10s for waitFor, 30s for navigate).\n\n  **Hover quirk:** `hover` dispatches both the JS event chain (mouseover/mouseenter/mousemove) AND a real-cursor move via CDP so CSS `:hover` activates. Many hover menus auto-close ~300ms after the cursor stops moving; the step after `hover` should usually be `waitFor` on the revealed element (or another `hover` on a child of the menu) so the menu stays open long enough for the next interaction.",
+    summary: 'One action inside a flow file. Shapes: `{ action: "navigate", url }`, `{ action: "click" | "hover" | "type" | "select" | "waitFor", target: { selector?, text?, role?, name? }, \u2026 }`, `{ action: "press", key, target?, repeat? }`, or `{ action: "analyze", label? }`. Every step accepts an optional `onError: "stop" | "continue"` (default `"stop"`).',
+    details: "The `target` block carries DUAL selectors: a strict CSS `selector` AND any of `text` / `role` / `name` as a fallback. The runner tries `selector` first, then `text`(+`role`), then `name`(+`role`), and picks the first one that resolves. If you only know what the element *looks like* but not its DOM, you can omit `selector` and pass `text` + `role` alone \u2014 the runner produces a stable CSS path at run time. Author-time `aqa_describe_page` will usually fill in both.\n\n  Action-specific fields: `value` for `type` / `select`; `label` for `select` (alternative to value); `clear: boolean` for `type` (default true); `force: boolean` for `click` (click through an element the hit test says would receive the click; default false); `timeoutMs` for any waitable action (per-tool default \u2014 5s for actions, 10s for waitFor, 30s for navigate).\n\n  **Hover quirk:** `hover` is one trusted pointer move, so the browser fires mouseover/mouseenter/mousemove itself and CSS `:hover` activates. Many hover menus auto-close ~300ms after the cursor stops moving; the step after `hover` should usually be `waitFor` on the revealed element (or another `hover` on a child of the menu) so the menu stays open long enough for the next interaction.",
     mapsTo: "aqa_flow_save (writes flow.steps[]) / aqa_flow_load (reads them)",
     related: ["flow", "checkpoint"]
   },
@@ -28647,6 +28720,30 @@ var GLOSSARY = [
     details: "Every checkpoint produces a full-page analysis (per the project preference \u2014 scoped subtree analysis is not implemented). One flow run can have multiple checkpoints; the agent reports each one's digest separately so the reviewer can see how a11y posture changes across the flow. A flow with zero `analyze` steps is degenerate \u2014 the runner will execute the actions but produce no AQA output; the agent flags this back to the user.",
     mapsTo: 'aqa_analyze_page (invoked at each step with action === "analyze")',
     related: ["flow", "step", "digest"]
+  },
+  {
+    term: "keyboard walk",
+    aliases: ["tab walk", "tab order walk", "focus order walk", "keyboard trap check", "focus visible check", "focus indicator check"],
+    summary: "Walking the page's Tab order with real key events and reading what happens: every focus stop with its element and box, whether focus reached the end of the page, looped back to the start or got stuck in a subset, where it jumped backwards in the DOM or upwards on screen, and \u2014 on request \u2014 a pixel comparison of each sampled stop focused vs blurred that grades the focus indicator.",
+    details: "One `aqa_keyboard_walk` call per page state. `summary.outcome` is the headline: `left-document` (normal end), `cycled` (page keeps focus in a loop), `trapped` (focus returns to a subset \u2014 `summary.trap` lists it; a modal that holds focus on purpose looks the same, so read the selectors), `max-steps`. `domOrderViolations` and `visualOrderViolations` are the 2.4.3 Focus Order evidence; `offscreenStops` flags stops the browser did not scroll into view. `indicatorSamples: N` screenshots the first N stops focused and blurred: `indicator.verdict` `visible` (\u22653:1 between the two states), `weak`, `none`, `unknown`; `includeCrops` attaches the focused crops as images. Single key interactions (Escape closes a dialog, ArrowDown moves a menu) are `aqa_interact_press`, which reports the element holding focus afterwards. The walk leaves focus on its last stop.",
+    mapsTo: "aqa_keyboard_walk (whole Tab order) / aqa_interact_press (one key, optionally after focusing a target)",
+    related: ["methodology", "verify visibility", "flow"]
+  },
+  {
+    term: "viewport emulation",
+    aliases: ["emulation", "emulate viewport", "reflow check", "zoom check", "200% zoom", "400% zoom", "text spacing check", "orientation check", "responsive check"],
+    summary: "Overriding the inspected tab's viewport through CDP \u2014 width / height, browser-zoom equivalent, screen orientation, WCAG 1.4.12 text spacing \u2014 and reading a deterministic layout probe back: horizontal overflow, elements past the viewport edge, clipped and spilled text, orientation media rules.",
+    details: "`aqa_emulate` is the evidence tool for 1.4.10 Reflow (`width: 320`, or `zoom: 400` of a 1280 px window), 1.4.4 Resize text (`zoom: 200`), 1.4.12 Text spacing (`textSpacing: true`) and 1.3.4 Orientation (`orientation`). `zoom` mimics Ctrl/Cmd+plus: the CSS viewport shrinks and the device scale grows, so the page really reflows at larger text. Text spacing rides a CDP inspector stylesheet, so the page DOM stays untouched and the snapshotter never sees it. The override persists on the tab until `reset: true` or the session ends \u2014 reset before analyzing or exporting, otherwise the next analysis runs at the emulated size. `diagnostics` is the probe; `screenshot: true` adds the viewport image; a call with no settings only probes.",
+    mapsTo: "aqa_emulate (apply / probe / reset)",
+    related: ["methodology", "session"]
+  },
+  {
+    term: "image inventory",
+    aliases: ["list images", "images on the page", "image triage", "alt inventory", "missing alt inventory"],
+    summary: 'One call listing every image-like element on the page \u2014 `<img>`, inline `<svg>`, `<input type="image">`, `role="img"`, optionally CSS backgrounds \u2014 with its declared text alternative, the deterministic role inference, its wrapper control, rendered box, load and cache state, and the cached AQA image notes that point at it.',
+    details: "`aqa_list_images` replaces a probe per image when triaging 1.1.1 / 1.4.5 / 1.4.1 / 2.4.4 questions: `summary` counts missing vs empty alt, informative images without a usable alt, functional images whose control has no name, not loaded, not cached, with issues; `items[].issueIds` maps rows to the notes in the cached analysis so a decision per image can be saved against the right ids. `cached: true` means `aqa_get_image_bytes` will return the original file; `false` means it will fall back to the rendered pixels. Paginated with `offset` / `limit` (cap 200).",
+    mapsTo: "aqa_list_images, then aqa_get_image_bytes / aqa_get_element_context per image that needs a verdict",
+    related: ["verify image alt", "note"]
   },
   {
     term: "verify image alt",
@@ -28661,8 +28758,24 @@ var GLOSSARY = [
     aliases: ["audit", "site-wide audit", "multi-page audit", "whole-site audit", "audit site", "a11y audit"],
     summary: "A multi-page accessibility sweep that crawls a site, analyzes every representative page, exports a per-page HTML report for each, and lands one self-contained HTML summary at `<outDir>/audit.html` linking them. Three phases: crawl (discover pages into a saved flow), confirm (user approves the shortlist), audit (per-page analyze + export + summary HTML).",
     details: "Select representative pages, then complete one page at a time: navigate, analyze, review manual notes and save definite outcomes when requested, export the page, record a checkpoint, then move on. Finish with audit.html linking to each per-page report. The audit-site skill coordinates combined scan and manual-review requests; the aqa-audit-runner is scans-only.\n\nDefault aqa_export_report output is the original needs-fix-only HTML plus suggested-fix placeholders. Set includeManualReview: true only when the user requests manual notes or their review; it adds check-manually/reviewed-ok sections and review activity to the HTML. Existing manual/reviewed-ok statuses do not enable these sections automatically. The export flag does not itself review notes or save decisions.\n\nReport unresolved checks and failed or unknown saves separately. Completing every scan does not mean the manual review is complete.",
-    mapsTo: "per page: aqa_flow_navigate + aqa_analyze_page + aqa_query_issues + aqa_export_report; then aqa_audit_save (renders + persists audit.html)",
+    mapsTo: "per page: aqa_interact_navigate + aqa_analyze_page + aqa_query_issues + aqa_export_report; then aqa_audit_save (renders + persists audit.html)",
     related: ["flow", "check manually", "verify image alt", "verify visibility", "digest"]
+  },
+  {
+    term: "listener inventory",
+    aliases: ["event listeners", "event listener inventory", "character key shortcuts check", "single key shortcut", "pointer cancellation check", "down event", "pointer gestures check", "multi-touch", "path-based gesture", "2.1.4", "2.5.1", "2.5.2"],
+    summary: "One call listing what the page listens for: `window`, `document` and every element asked through CDP, plus the jQuery and React handlers read in the page, kept by family (keyboard, pointer, touch, wheel by default) with a preview of each handler's source and flags derived from it. It is how the check-manually notes on 2.1.4 Character Key Shortcuts, 2.5.2 Pointer Cancellation and 2.5.1 Pointer Gestures get evidence instead of a guess from the DOM.",
+    details: 'Flags are hints, not verdicts: `key-without-modifier-check` marks a key listener that compares the key with a printable character \u2014 a letter, digit or punctuation \u2014 and never checks a modifier (a shortcut candidate \u2014 read the preview to see whether it is one, and whether it applies only while the control has focus; Escape, Enter and arrow-key handlers are not character keys and are not flagged); `down-event` marks mousedown / pointerdown / touchstart handlers (does the function run on the down event, or only on the up?); `multi-touch` and `tracks-pointer-path` mark touch handlers reading a second touch point or a move handler tracking coordinates (a gesture \u2014 is there a single-pointer alternative?); `framework-dispatcher` marks jQuery / React / Angular plumbing whose source is not the application\'s \u2014 the real handlers then appear as `jquery` / `react` rows when the page exposes them, otherwise the honest answer is "handlers found, not verified". `summary` counts by family, source and flag; `truncated` says when the element (default 1500) or listener (default 300) cap was hit. It cannot see timers, so an automatic refresh or redirect is not a listener question.',
+    mapsTo: "aqa_list_listeners",
+    related: ["check manually", "methodology", "keyboard walk"]
+  },
+  {
+    term: "rendered contrast",
+    aliases: ["non-text contrast", "border contrast", "boundary contrast", "ui component contrast", "colour sample", "color sample", "sample colours", "sample colors", "1.4.11"],
+    summary: "The contrast of what is painted, read from a viewport screenshot, as opposed to what the stylesheet declares \u2014 the evidence WCAG 1.4.11 Non-text Contrast asks for on a field border, a control's boundary or a focus ring drawn as a border, where images, gradients, translucency and breakpoints make declared colours unreliable.",
+    details: "`aqa_sample_colors` scrolls the element into view, screenshots the viewport and reads the pixels: per side the median colour of the border band and of the strips just outside and inside it with their contrast ratios; the element's fill and the ring around it; and `boundaryContrast` \u2014 what identifies the component: the fill against the surround, else the weakest border side against its outside \u2014 with a 3:1 `verdict`. `declared` carries the computed colours for comparison; `caveats` name sides with no declared border, opacity, background images and sides clipped by the viewport, which is when the verdict is `unknown`. Text contrast is AQA's own 1.4.3 note, not this tool.",
+    mapsTo: "aqa_sample_colors (by issueId or selector, includeCrop for the pixels)",
+    related: ["check manually", "verify visibility", "methodology"]
   }
 ];
 var normalize = (s) => s.trim().toLowerCase();
@@ -32766,17 +32879,17 @@ function toInputSchema(schema) {
 
 // src/mcp-server/tools.ts
 var issueFiltersSchema = {
-  status: external_exports4.enum(["needsFix" /* NEEDS_FIX */, "checkManually" /* MANUALLY */, "reviewedOk" /* DISMISSED */]).describe("Filter by note status.").optional(),
-  severity: external_exports4.enum(["high" /* HIGH */, "medium" /* MEDIUM */, "low" /* LOW */]).describe("Filter by severity.").optional(),
-  complexity: external_exports4.enum(["easy" /* EASY */, "average" /* AVERAGE */, "hard" /* HARD */]).describe("Filter by fix complexity.").optional(),
-  responsibility: external_exports4.enum(["content" /* CONTENT */, "design" /* DESIGN */, "development" /* DEV */]).describe('Filter by responsibility \u2014 one of "content", "design", "development".').optional(),
+  status: external_exports4.enum([NotesStatus.NEEDS_FIX, NotesStatus.MANUALLY, NotesStatus.DISMISSED]).describe("Filter by note status.").optional(),
+  severity: external_exports4.enum([NotesSeverity.HIGH, NotesSeverity.MEDIUM, NotesSeverity.LOW]).describe("Filter by severity.").optional(),
+  complexity: external_exports4.enum([NotesComplexity.EASY, NotesComplexity.AVERAGE, NotesComplexity.HARD]).describe("Filter by fix complexity.").optional(),
+  responsibility: external_exports4.enum([NotesResponsibilities.CONTENT, NotesResponsibilities.DESIGN, NotesResponsibilities.DEV]).describe('Filter by responsibility \u2014 one of "content", "design", "development".').optional(),
   technology: external_exports4.enum([
-    "aria" /* ARIA */,
-    "css" /* CSS */,
-    "html" /* HTML */,
-    "js" /* JS */,
-    "media" /* MEDIA */,
-    "svg" /* SVG */
+    NotesTechnologies.ARIA,
+    NotesTechnologies.CSS,
+    NotesTechnologies.HTML,
+    NotesTechnologies.JS,
+    NotesTechnologies.MEDIA,
+    NotesTechnologies.SVG
   ]).describe('Filter by technology \u2014 one of "aria", "css", "html", "js", "media", "svg".').optional(),
   ruleId: external_exports4.string().describe("Exact ruleId match.").optional(),
   tagName: external_exports4.string().describe('Exact tag name, uppercase (e.g. "IMG", "A"). Prefer this when the user names an element type \u2014 "image issues" \u2192 "IMG", "links" \u2192 "A", "form fields" \u2192 "INPUT".').optional(),
@@ -32791,6 +32904,7 @@ var glossaryArgs = external_exports4.object({
   term: external_exports4.string().describe('Optional. The AQA term to look up \u2014 canonical name or alias (e.g. "check manually", "manual review", "ruleset pack"). Omit to get the full index.').optional()
 }).strict();
 var listTabsArgs = emptyArgs;
+var listFramesArgs = external_exports4.object({ tabId: tabIdArg }).strict();
 var bindTabArgs = external_exports4.object({
   tabId: external_exports4.number().int().positive().describe("Tab id to bind this session to \u2014 pick it from `aqa_list_tabs`.")
 }).strict();
@@ -32815,12 +32929,12 @@ var analysisStateArgs = external_exports4.object({ tabId: tabIdArg }).strict();
 var clearHighlightsArgs = external_exports4.object({ tabId: tabIdArg }).strict();
 var queryIssuesArgs = external_exports4.object({
   ...issueFiltersSchema,
-  limit: external_exports4.number().int().min(1).max(200).describe("Max issues to return. Default 50.").optional(),
+  limit: external_exports4.number().int().min(1).max(ISSUE_QUERY_MAX_LIMIT).describe("Max issues to return. Default 50, max 200.").default(ISSUE_QUERY_DEFAULT_LIMIT),
   offset: external_exports4.number().int().min(0).describe("Start at this matched-row offset. Follow nextOffset until null, before changing statuses. Default 0.").optional(),
   withRemediation: external_exports4.boolean().describe("Include each issue's `remediation`. Default true.").optional(),
   tabId: tabIdArg
 }).strict();
-var reviewStatusArg = external_exports4.enum(["needsFix" /* NEEDS_FIX */, "checkManually" /* MANUALLY */, "reviewedOk" /* DISMISSED */]).describe("Count only notes with this status \u2014 `checkManually` for outstanding review work. Group ids do not change with the filter.").optional();
+var reviewStatusArg = external_exports4.enum([NotesStatus.NEEDS_FIX, NotesStatus.MANUALLY, NotesStatus.DISMISSED]).describe("Count only notes with this status \u2014 `checkManually` for outstanding review work. Group ids do not change with the filter.").optional();
 var reviewGroupsArgs = external_exports4.object({
   status: reviewStatusArg,
   tabId: tabIdArg
@@ -32829,12 +32943,12 @@ var reviewGroupArgs = external_exports4.object({
   groupId: external_exports4.string().min(1).describe("Group id from `aqa_review_groups` (`<ruleId>/<solutionId>[/q<n>]`). Stable for one analysis run."),
   status: reviewStatusArg,
   offset: external_exports4.number().int().min(0).describe("Start at this matched-note offset. Follow `nextOffset` until null. Default 0.").optional(),
-  limit: external_exports4.number().int().min(1).max(200).describe("Max notes to return. Default 50.").optional(),
+  limit: external_exports4.number().int().min(1).max(REVIEW_GROUP_MAX_LIMIT).describe("Max notes to return. Default 50, max 200.").default(REVIEW_GROUP_DEFAULT_LIMIT),
   tabId: tabIdArg
 }).strict();
 var setNotesStatusArgs = external_exports4.object({
   issueIds: external_exports4.array(external_exports4.string().min(1)).min(1).max(50).describe("Up to 50 individually reviewed notes with the same verdict and rationale."),
-  status: external_exports4.enum(["needsFix" /* NEEDS_FIX */, "reviewedOk" /* DISMISSED */]),
+  status: external_exports4.enum([NotesStatus.NEEDS_FIX, NotesStatus.DISMISSED]),
   description: external_exports4.string().trim().min(1).describe("Evidence-based rationale that applies to every listed note; recorded on each activity."),
   analysisId: external_exports4.string().uuid().describe("Persisted analysis-run UUID from aqa_review_groups (also returned by aqa_analyze_page / aqa_last_analysis). Rejects a different analysis run, even with identical results."),
   outDir: external_exports4.string().optional().describe("Directory for the durable status receipt. Defaults to ./reports."),
@@ -32896,7 +33010,7 @@ var rankIssuesArgs = external_exports4.object({
   sortBy: external_exports4.enum(["composite", "severity", "elementIssueCount", "ruleFrequency", "complexity", "auto", "wcagLevel", "visibility"]).describe("`composite` (default) uses `weights`; named axes sort by that single dimension.").optional(),
   weights: external_exports4.record(external_exports4.string(), external_exports4.number()).describe("Per-axis weight overrides. Axes in [0,1]; weights are multipliers.").optional(),
   groupBy: external_exports4.enum(["none", "element", "rule"]).describe("`none` (default) returns issues. `element` groups by first selector. `rule` groups by ruleId.").optional(),
-  limit: external_exports4.number().int().min(1).max(200).describe("Max items. Default 10.").optional(),
+  limit: external_exports4.number().int().min(1).max(RANK_MAX_LIMIT).describe("Max items. Default 10, max 200.").default(RANK_DEFAULT_LIMIT),
   withRemediation: external_exports4.boolean().describe('When `groupBy="none"`, include each issue\'s `remediation`. Default false.').optional(),
   ...issueFiltersSchema,
   tabId: tabIdArg
@@ -32907,6 +33021,12 @@ var highlightElementsArgs = external_exports4.object({
   style: external_exports4.enum(["auto", "spotlight", "outline"]).describe("`auto` (default), `spotlight`, or `outline`.").optional(),
   tabId: tabIdArg
 }).strict();
+var flowFrameArg = external_exports4.object({
+  urlIncludes: external_exports4.string().min(1).describe('Case-insensitive substring of the frame URL, e.g. "jetpack.wordpress.com/jetpack-comment" or "widgets.wp.com/likes".').optional(),
+  index: external_exports4.number().int().min(0).describe("Frame index from `aqa_list_frames` (0 = the page).").optional()
+}).strict().refine((f) => f.urlIncludes !== void 0 || f.index !== void 0, { message: "frame must include `urlIncludes` or `index`" }).describe(
+  "Run this action inside an iframe of the tab \u2014 a cross-origin one included \u2014 instead of the page: match it by `urlIncludes` or by the `index` `aqa_list_frames` reports (both given: both must match; first match in document order wins). Per call only: the session's target frame, which scopes `aqa_analyze_page`, is left alone. Fails with `frame-not-found` when nothing matches."
+);
 var flowNavigateArgs = external_exports4.object({
   url: external_exports4.string().min(1).describe("Absolute URL to navigate to."),
   timeoutMs: external_exports4.number().int().min(1e3).max(12e4).describe("Wait for the `load` event up to this many ms. Default 30000.").optional(),
@@ -32919,7 +33039,9 @@ var flowClickArgs = external_exports4.object({
     role: external_exports4.string().describe('ARIA role \u2014 narrows text / name queries (e.g. "button", "link", "menuitem").').optional(),
     name: external_exports4.string().describe("Accessible name.").optional()
   }).strict().describe("Locator. At least one of `selector` / `text` / `name` must be present.").refine(hasFlowTarget, { message: FLOW_TARGET_MESSAGE }),
+  frame: flowFrameArg.optional(),
   timeoutMs: external_exports4.number().int().min(100).max(6e4).describe("Poll budget while the element animates in. Default 5000.").optional(),
+  force: external_exports4.boolean().describe("Click even when another element would receive the click; the result then names it as `interceptedBy`. Default false.").optional(),
   tabId: tabIdArg
 }).strict();
 var flowHoverArgs = external_exports4.object({
@@ -32929,6 +33051,7 @@ var flowHoverArgs = external_exports4.object({
     role: external_exports4.string().optional(),
     name: external_exports4.string().optional()
   }).strict().describe("Locator. At least one of `selector` / `text` / `name` must be present.").refine(hasFlowTarget, { message: FLOW_TARGET_MESSAGE }),
+  frame: flowFrameArg.optional(),
   timeoutMs: external_exports4.number().int().min(100).max(6e4).describe("Poll budget while the element animates in. Default 5000.").optional(),
   tabId: tabIdArg
 }).strict();
@@ -32939,6 +33062,7 @@ var flowTypeArgs = external_exports4.object({
     role: external_exports4.string().describe('ARIA role (e.g. "textbox", "searchbox", "combobox").').optional(),
     name: external_exports4.string().describe("Accessible name (typically the label text).").optional()
   }).strict().describe("Locator. At least one of `selector` / `text` / `name` must be present.").refine(hasFlowTarget, { message: FLOW_TARGET_MESSAGE }),
+  frame: flowFrameArg.optional(),
   value: external_exports4.string().describe("String to set as the input's value."),
   clear: external_exports4.boolean().describe("Clear the existing value first. Default true.").optional(),
   timeoutMs: external_exports4.number().int().min(100).max(6e4).describe("Poll budget while the input renders / enables. Default 5000.").optional(),
@@ -32951,6 +33075,7 @@ var flowSelectArgs = external_exports4.object({
     role: external_exports4.string().optional(),
     name: external_exports4.string().optional()
   }).strict().describe("Locator for the `<select>` element. At least one of `selector` / `text` / `name` must be present.").refine(hasFlowTarget, { message: FLOW_TARGET_MESSAGE }),
+  frame: flowFrameArg.optional(),
   value: external_exports4.string().describe("Match by `option.value`.").optional(),
   label: external_exports4.string().describe("Match by visible option text.").optional(),
   timeoutMs: external_exports4.number().int().min(100).max(6e4).describe("Default 5000.").optional(),
@@ -32965,14 +33090,72 @@ var flowWaitForArgs = external_exports4.object({
     role: external_exports4.string().optional(),
     name: external_exports4.string().optional()
   }).strict().describe("Locator. At least one of `selector` / `text` / `name` must be present.").refine(hasFlowTarget, { message: FLOW_TARGET_MESSAGE }),
+  frame: flowFrameArg.optional(),
   timeoutMs: external_exports4.number().int().min(100).max(12e4).describe("Default 10000.").optional(),
   tabId: tabIdArg
 }).strict();
 var flowDescribePageArgs = external_exports4.object({
   rootSelector: external_exports4.string().min(1).describe("Optional. Limit the snapshot to elements inside this selector.").optional(),
   maxItems: external_exports4.number().int().min(1).max(200).describe("Cap on returned interactive elements. Default 80.").optional(),
+  frame: flowFrameArg.optional(),
   tabId: tabIdArg
 }).strict();
+var flowTargetArg = external_exports4.object({
+  selector: external_exports4.string().describe("Strict CSS selector. Tried first.").optional(),
+  text: external_exports4.string().describe("Visible text (case-insensitive substring; exact match preferred).").optional(),
+  role: external_exports4.string().describe("ARIA role \u2014 narrows text / name queries.").optional(),
+  name: external_exports4.string().describe("Accessible name.").optional()
+}).strict().refine(hasFlowTarget, { message: FLOW_TARGET_MESSAGE });
+var flowPressArgs = external_exports4.object({
+  key: external_exports4.string().min(1).describe(
+    "Key to press, with optional modifiers: `Tab`, `Shift+Tab`, `Enter`, `Escape`, `Space`, `ArrowDown` / `ArrowUp` / `ArrowLeft` / `ArrowRight`, `Home`, `End`, `PageUp`, `PageDown`, `Backspace`, `Delete`, a single printable character, or `Ctrl+\u2026` / `Alt+\u2026` / `Meta+\u2026` combinations."
+  ),
+  target: flowTargetArg.describe("Optional. Focus this element first (same locator rules as `aqa_interact_click`).").optional(),
+  frame: flowFrameArg.optional(),
+  repeat: external_exports4.number().int().min(1).max(50).describe("Press the key this many times. Default 1.").optional(),
+  timeoutMs: external_exports4.number().int().min(100).max(6e4).describe("Poll budget for `target`. Default 5000.").optional(),
+  tabId: tabIdArg
+}).strict();
+var keyboardWalkArgs = external_exports4.object({
+  maxSteps: external_exports4.number().int().min(1).max(400).describe("Tab presses to dispatch at most. Default 100.").optional(),
+  start: flowTargetArg.describe("Optional. Focus this element before the first Tab instead of starting from the top of the document.").optional(),
+  backwards: external_exports4.boolean().describe("Walk with Shift+Tab instead of Tab. Default false.").optional(),
+  indicatorSamples: external_exports4.number().int().min(0).max(12).describe("Screenshot-compare the first N stops focused vs blurred to grade the focus indicator (two viewport screenshots per stop). Default 0.").optional(),
+  includeCrops: external_exports4.boolean().describe("Attach the focused crop of each sampled stop as an image block (vision tokens). Default false.").optional(),
+  tabId: tabIdArg
+}).strict();
+var emulateArgs = external_exports4.object({
+  width: external_exports4.number().int().min(100).max(1e4).describe("CSS viewport width, e.g. 320 for WCAG 1.4.10 Reflow.").optional(),
+  height: external_exports4.number().int().min(100).max(1e4).describe("CSS viewport height. Defaults to the base height (scaled by `zoom`).").optional(),
+  zoom: external_exports4.number().int().min(100).max(500).describe("Browser-zoom equivalent in percent: 200 for WCAG 1.4.4 Resize text, 400 for 1.4.10 on a 1280 px window. Shrinks the CSS viewport and raises the device scale like Ctrl/Cmd+plus.").optional(),
+  orientation: external_exports4.enum(["portrait", "landscape"]).describe("Swap the base dimensions and report this screen orientation to the page (WCAG 1.3.4).").optional(),
+  textSpacing: external_exports4.boolean().describe("Apply (true) or remove (false) the WCAG 1.4.12 text-spacing overrides via a CDP inspector stylesheet \u2014 the page DOM is untouched.").optional(),
+  reset: external_exports4.boolean().describe("Clear every override first. Pass alone to restore the real viewport.").optional(),
+  screenshot: external_exports4.boolean().describe("Also return a viewport screenshot at the emulated size (vision tokens). Default false.").optional(),
+  tabId: tabIdArg
+}).strict();
+var listImagesArgs = external_exports4.object({
+  includeBackground: external_exports4.boolean().describe("Also list elements with a CSS `background-image`. Default false.").optional(),
+  onlyRendered: external_exports4.boolean().describe("Only rows with a visible, non-zero box. Default false.").optional(),
+  offset: external_exports4.number().int().min(0).describe("Pagination offset into the inventory. Default 0.").optional(),
+  limit: external_exports4.number().int().min(1).max(200).describe("Rows per page. Default 100.").optional(),
+  tabId: tabIdArg
+}).strict();
+var listListenersArgs = external_exports4.object({
+  families: external_exports4.array(external_exports4.enum(["keyboard", "pointer", "touch", "wheel", "focus", "form", "other"])).min(1).describe("Listener families to keep. Default keyboard, pointer, touch, wheel. Ignored when `types` is given.").optional(),
+  types: external_exports4.array(external_exports4.string().min(1)).min(1).describe("Exact event types to keep (`keydown`, `touchstart`, \u2026); overrides `families`.").optional(),
+  maxTargets: external_exports4.number().int().min(1).max(3e3).describe("Elements to scan at most, in document order (plus `window` and `document`). Default 1500.").optional(),
+  maxListeners: external_exports4.number().int().min(1).max(1e3).describe("Listeners to return at most; the scan stops there. Default 300.").optional(),
+  tabId: tabIdArg
+}).strict();
+var sampleColorsArgs = external_exports4.object({
+  issueId: external_exports4.string().min(1).describe("Issue id (`note.id`). Resolves through the cached evaluation to the issue's first selector. Mutually exclusive with `selector`.").optional(),
+  selector: external_exports4.string().min(1).describe("CSS selector for the element to sample. Mutually exclusive with `issueId`.").optional(),
+  includeCrop: external_exports4.boolean().describe("Attach the sampled area (the element plus a halo) as a PNG image block. Default false.").optional(),
+  tabId: tabIdArg
+}).strict().refine((d) => d.issueId === void 0 !== (d.selector === void 0), {
+  message: "pass exactly one of `issueId` or `selector`"
+});
 var flowStepTarget = external_exports4.object({
   selector: external_exports4.string().optional(),
   text: external_exports4.string().optional(),
@@ -32991,6 +33174,7 @@ var flowStepActionSchema = external_exports4.discriminatedUnion("action", [
     action: external_exports4.literal("click"),
     target: flowStepTarget,
     timeoutMs: external_exports4.number().int().min(100).max(6e4).optional(),
+    force: external_exports4.boolean().optional(),
     onError: external_exports4.enum(["stop", "continue"]).optional(),
     note: external_exports4.string().optional()
   }),
@@ -33027,6 +33211,15 @@ var flowStepActionSchema = external_exports4.discriminatedUnion("action", [
     note: external_exports4.string().optional()
   }),
   external_exports4.object({
+    action: external_exports4.literal("press"),
+    key: external_exports4.string().min(1),
+    target: flowStepTarget.optional(),
+    repeat: external_exports4.number().int().min(1).max(50).optional(),
+    timeoutMs: external_exports4.number().int().min(100).max(6e4).optional(),
+    onError: external_exports4.enum(["stop", "continue"]).optional(),
+    note: external_exports4.string().optional()
+  }),
+  external_exports4.object({
     action: external_exports4.literal("analyze"),
     label: external_exports4.string().optional(),
     onError: external_exports4.enum(["stop", "continue"]).optional(),
@@ -33048,7 +33241,7 @@ var flowLoadArgs = external_exports4.object({ name: external_exports4.string().m
 var flowListArgs = emptyArgs;
 var setNoteStatusArgs = external_exports4.object({
   issueId: external_exports4.string().min(1).describe("The `note.id` to update (copy from `aqa_query_issues` results or the panel). One note per call."),
-  status: external_exports4.enum(["needsFix" /* NEEDS_FIX */, "reviewedOk" /* DISMISSED */]).describe("The new status to persist. Only the two values AQA's own panel exposes are accepted \u2014 `checkManually` is rejected."),
+  status: external_exports4.enum([NotesStatus.NEEDS_FIX, NotesStatus.DISMISSED]).describe("The new status to persist. Only the two values AQA's own panel exposes are accepted \u2014 `checkManually` is rejected."),
   description: external_exports4.string().min(1).describe("Your one-line rationale for the change, recorded on the note's activity as the durable record of WHY the status changed (required). Grounded on `issue.problem` / `ruleTitle` / `remediation.solutions`; don't paste the whole answer."),
   tabId: tabIdArg
 }).strict();
@@ -33094,13 +33287,18 @@ var TOOLS = [
   },
   {
     name: "aqa_setup_bridge",
-    description: 'Show the AQA bridge pairing code, the live connection status, and a `diagnosis` of WHY the bridge is not connected \u2014 `pairing-code-mismatch` (extension reaches the server but its code is wrong: re-paste), `extension-disconnected` (service-worker eviction: auto-reconnects, retry), or `no-pairing-attempt` (nothing reached the server: wedged service worker / empty code field / port mismatch / sandboxed VM) \u2014 with `steps` tailored to that diagnosis and pairing-attempt telemetry. Works WITHOUT a connected bridge \u2014 call this whenever an AQA tool reports the bridge is not connected/paired, or the user asks how to set up, pair, connect, or authorize the AQA extension (or mentions a pairing code / token / "stuck" bridge). Lead with the `diagnosis`, then relay the pairing code and `steps` verbatim. When `connected` is true the result also reports `boundTabId` and the open http(s) `tabs`: if `boundTabId` is null (or its tab is gone), a connected bridge is NOT "no action needed" \u2014 present the `tabs` and let the user pick one, then bind it via `aqa_bind_tab` (or `aqa_start_session` with that `tabId`). Those are tool calls you make, not slash commands.',
+    description: 'Show the AQA bridge pairing code, the live connection status, and a `diagnosis` of WHY the bridge is not connected \u2014 `pairing-code-mismatch` (extension reaches the server but its code is wrong: re-paste), `extension-disconnected` (service-worker eviction: auto-reconnects, retry), `starting` (the server bound its port moments ago and the extension has not probed it yet \u2014 it redials every \u226430s; nothing to fix, retry in `retryInSeconds`), or `no-pairing-attempt` (nothing reached the server in the ~30s since boot: wedged service worker / empty code field / port outside 31773-31780 / sandboxed VM) \u2014 with `steps` tailored to that diagnosis and pairing-attempt telemetry. Works WITHOUT a connected bridge \u2014 call this whenever an AQA tool reports the bridge is not connected/paired, or the user asks how to set up, pair, connect, or authorize the AQA extension (or mentions a pairing code / token / "stuck" bridge). Lead with the `diagnosis`, then relay the pairing code and `steps` verbatim. When `connected` is true the result also reports `boundTabId` and the open http(s) `tabs`: if `boundTabId` is null (or its tab is gone), a connected bridge is NOT "no action needed" \u2014 present the `tabs` and let the user pick one, then bind it via `aqa_bind_tab` (or `aqa_start_session` with that `tabId`). Those are tool calls you make, not slash commands.',
     inputSchema: toInputSchema(emptyArgs)
   },
   {
     name: "aqa_list_tabs",
     description: "List every open http(s) browser tab as a targeting candidate: `tabId`, `url`, `title`, `active` (selected in its window), `windowId`, plus whether an AQA session is live on it (`sessionActive`) or resumable after a service-worker eviction (`sessionHibernating`). Also echoes `boundTabId` \u2014 the tab this session is currently bound to (`null` when unbound). Call it to pick a `tabId` for `aqa_bind_tab` / `aqa_start_session`, whenever the user asks to work on a different/specific tab, or after a `tab-not-found` / `no-session-tab` error.",
     inputSchema: toInputSchema(listTabsArgs)
+  },
+  {
+    name: "aqa_list_frames",
+    description: "List the frames of the bound tab in walk order \u2014 the page first (index 0), then every iframe, cross-origin ones included \u2014 with `index`, `url`, `parentIndex` (the embedding frame), `crossOrigin` (the frame runs in its own process) and `target` (the session's current target frame, where actions without a `frame` run and what `aqa_analyze_page` evaluates). Call it when an element you need lives inside an iframe \u2014 an embedded comment editor, a Like widget, a payment form \u2014 then pass `frame: { index }` or `frame: { urlIncludes }` to `aqa_interact_click` / `aqa_interact_type` / `aqa_interact_press` / `aqa_describe_page` and the others to act inside it. Naming a frame per call never changes the target frame. Hard-fail tags: `no-active-tab`, `debugger-not-attached`, `tab-not-found`.",
+    inputSchema: toInputSchema(listFramesArgs)
   },
   {
     name: "aqa_bind_tab",
@@ -33154,18 +33352,33 @@ var TOOLS = [
   },
   {
     name: "aqa_capture_element_view",
-    description: 'Capture a screenshot of an AQA-flagged element in its rendered context \u2014 the pixels answer what the user SEES, which no DOM-derived field can. Returns BOTH a `type: "image"` content block (PNG) AND a `type: "text"` metadata block (rect, viewport, dpr, `intersectsViewport`, `nonZeroSize`, cached `a11y` on the `issueId` path). Pass exactly one of `issueId` or `selector`. `mode: "crop"` (default, with `padding`) = the element\'s readable neighborhood \u2014 for reading the visible label / text / focus indicator off the image (Label in Name family); `mode: "full-page"` = the post-scroll viewport with the element outlined \u2014 for element-compositing verdicts (covered by a sticky banner / modal, off-viewport, not painted; see the verify-visibility workflow). The element is scrolled into view first. Screenshots cost vision tokens \u2014 call on demand for a specific issue, not in bulk. WRONG tool for judging image alt text: a screenshot shows the rendered element with page chrome on top, not the image itself \u2014 use `aqa_get_image_bytes` + `aqa_get_element_context`. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `debugger-not-attached`, `screenshot-failed`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
+    description: 'Capture a screenshot of an AQA-flagged element in its rendered context \u2014 the pixels answer what the user SEES, which no DOM-derived field can. Returns BOTH a `type: "image"` content block (PNG) AND a `type: "text"` metadata block (rect, viewport, dpr, `intersectsViewport`, `nonZeroSize`, cached `a11y` on the `issueId` path). Pass exactly one of `issueId` or `selector`. `mode: "crop"` (default, with `padding`) = the element\'s readable neighborhood \u2014 for reading the visible label / text / focus indicator off the image (Label in Name family); `mode: "full-page"` = the post-scroll viewport with the element outlined \u2014 for element-compositing verdicts (covered by a sticky banner / modal, off-viewport, not painted; see the verify-visibility workflow). The element is scrolled into view first, which needs the tab painted: when the bound tab sits hidden behind another tab in its window, the extension switches to it before capturing (say so if the user wonders why the tab changed); `tab-not-visible` means it stayed hidden \u2014 the window is minimized or fully covered \u2014 relay the `hint` in the result and retry once the user has the tab on screen. Screenshots cost vision tokens \u2014 call on demand for a specific issue, not in bulk. WRONG tool for judging image alt text: a screenshot shows the rendered element with page chrome on top, not the image itself \u2014 use `aqa_get_image_bytes` + `aqa_get_element_context`. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `debugger-not-attached`, `tab-not-visible`, `screenshot-failed`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
     inputSchema: toInputSchema(captureElementViewArgs)
   },
   {
     name: "aqa_get_image_bytes",
-    description: "Pull the raw bytes of an `<img>` element's image from the session's network-recorder cache \u2014 the pixels answer what the image DEPICTS, which the DOM `alt` string and `src` URL cannot (they only say what the alt CLAIMS and where the image points). Returns BOTH a `type: \"image\"` content block (original MIME type \u2014 JPEG / PNG / WebP / GIF / \u2026) AND a `type: \"text\"` metadata block (url, intrinsic w/h, `fromSrcset`, byte length). Resolves the browser's chosen `currentSrc` before the cache lookup, so the bytes are the ones the user actually sees. **Never re-fetches**: hard-fails with `resource-not-cached` when the bytes weren't recorded during the session \u2014 report inconclusive rather than fetching out-of-band (auth-gated / now-404 / dynamic URLs would poison the verdict). Scope: HTML `<img>` with a network resource only; inline `<svg>`, `data:` URIs, and CSS backgrounds hard-fail with their own tags. Pass exactly one of `issueId` or `selector`. Image bytes cost vision tokens \u2014 call on demand, not in bulk. For the full alt-meaningfulness verdict pair with `aqa_get_element_context` (see the verify-image-alt workflow). Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `not-an-image-element`, `image-source-empty`, `image-not-loaded`, `data-uri-not-supported`, `inline-svg-not-supported`, `resource-not-cached`, `debugger-not-attached`, `no-active-tab`, `invalid-args`, `tab-not-found`.",
+    description: 'Pull the pixels of an `<img>` element \u2014 they answer what the image DEPICTS, which the DOM `alt` string and `src` URL cannot (they only say what the alt CLAIMS and where the image points). The extension first scrolls the image into view and waits up to 3 s for a lazy load, then serves the bytes from the session\'s network-recorder cache (`source: "cache"`, original MIME type \u2014 JPEG / PNG / WebP / GIF / \u2026). When the cache has nothing for the URL (fetched before recording, blob / auth-gated / expired URL), it falls back to a PNG crop of the element\'s rendered box (`source: "rendered"`, with `rendered.note`): what the user sees at the displayed size, overlays and CSS crops included \u2014 judge the alt against it, but say in the verdict that the original file was not available. **Never re-fetches** \u2014 no out-of-band download. Returns BOTH a `type: "image"` content block AND a `type: "text"` metadata block (url, `source`, intrinsic w/h, `fromSrcset`, byte length). Resolves the browser\'s chosen `currentSrc` before the cache lookup, so the bytes are the ones the user actually sees. Scope: HTML `<img>` only; inline `<svg>` and `data:` URIs hard-fail with their own tags. Pass exactly one of `issueId` or `selector`. Image bytes cost vision tokens \u2014 call on demand, not in bulk; use `aqa_list_images` to triage a page first. For the full alt-meaningfulness verdict pair with `aqa_get_element_context` (see the verify-image-alt workflow). Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `not-an-image-element`, `image-source-empty`, `image-not-loaded`, `data-uri-not-supported`, `inline-svg-not-supported`, `resource-not-cached` (only when the element is not painted either), `debugger-not-attached`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
     inputSchema: toInputSchema(getImageBytesArgs)
   },
   {
     name: "aqa_get_element_context",
     description: 'Walk an `<img>` element\'s surroundings and return a structured context payload: decorative signals (`alt=""` / `role="presentation"` / `role="none"` / `aria-hidden` incl. ancestors), nearest `<a href>` / `<button>` wrapper with its accessible name (\u2192 image is functional), `<figure>`/`<figcaption>` text, nearest landmark ancestor, resolved `aria-labelledby` / `aria-describedby` text, sibling text (\u2264200 chars) \u2014 plus a deterministic `inferredRole` rollup (`decorative | functional | informative | ambiguous`) with a one-line `inferredRoleReason`. Companion to `aqa_get_image_bytes`: that answers what the image SHOWS, this answers what JOB it does on the page; reconcile both for alt-meaningfulness verdicts (see the verify-image-alt workflow). Text-only response. Pass exactly one of `issueId` or `selector`. Also callable alone for the decorative-vs-informative judgement. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `debugger-not-attached`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
     inputSchema: toInputSchema(getElementContextArgs)
+  },
+  {
+    name: "aqa_list_images",
+    description: 'Inventory every image-like element on the bound tab in one call: `<img>`, inline `<svg>`, `<input type="image">`, `role="img"`, and with `includeBackground` CSS background images. Each row carries the declared `alt` (`null` = attribute absent, `""` = decorative), `role` / `ariaLabel` / `title`, `ariaHidden`, the deterministic `inferredRole` (`decorative` / `functional` / `informative` / `ambiguous`, same rubric as `aqa_get_element_context`) with its reason, the link / button `wrapper`, the rendered box, `rendered` / `inViewport`, `loaded` and `lazy`, `natural` size, `cached` (the recorder holds the bytes, so `aqa_get_image_bytes` returns the original), and `issueIds` \u2014 the cached AQA notes for 1.1.1 / 1.4.5 / 1.4.1 / 2.4.4 that point at the element or its wrapper. `summary` counts the page: missing vs empty alt, informative images without a usable alt, functional images whose control has no name, not loaded, not cached, with issues. Use it to triage image questions page-wide before probing single images; paginate with `offset` / `limit`; `truncated` says the page-side walk hit its caps. Hard-fail tags: `no-active-tab`, `debugger-not-attached`, `page-unreadable`, `tab-not-found`.',
+    inputSchema: toInputSchema(listImagesArgs)
+  },
+  {
+    name: "aqa_list_listeners",
+    description: 'Inventory the event listeners of the bound tab in one call: `window`, `document` and up to `maxTargets` elements (default 1500) asked through CDP, plus the jQuery and React handlers read in the page, kept by family (default keyboard, pointer, touch, wheel) or exact `types`. Each row names the target (selector, tag, role, name), the event type, capture / passive flags, a 500-character handler preview, the registration location and `flags` derived from the handler source: `key-without-modifier-check` (a key listener that compares the key with a printable character \u2014 a letter, digit or punctuation \u2014 and never checks a modifier: a WCAG 2.1.4 Character Key Shortcuts candidate; Escape, Enter and arrow-key handlers are not flagged), `down-event` (mousedown / pointerdown / touchstart \u2014 2.5.2 Pointer Cancellation), `multi-touch` and `tracks-pointer-path` (2.5.1 Pointer Gestures), `framework-dispatcher` (framework plumbing, not application code). Flags are hints: read the preview before concluding, and when the only handlers are framework dispatchers say "handlers found, not verified" rather than "no shortcuts". `summary` counts by family, source and flag and says whether jQuery / React are present; `truncated` says when the element or listener cap was hit. Use it to answer the check-manually notes on 2.1.4 / 2.5.1 / 2.5.2 instead of guessing from the DOM. Hard-fail tags: `no-active-tab`, `debugger-not-attached`, `page-unreadable`, `tab-not-found`.',
+    inputSchema: toInputSchema(listListenersArgs)
+  },
+  {
+    name: "aqa_sample_colors",
+    description: "Measure the rendered \u2014 not declared \u2014 colours of one element for WCAG 1.4.11 Non-text Contrast (a field border, a control's boundary, a focus ring drawn as a border): scrolls it into view, screenshots the viewport and reads the pixels. Per side: the median colour of the border band and of the 2 px strips just outside and inside it, with their contrast ratios. Overall: the element's fill, the ring around it, `contrastFillSurround`, and `boundaryContrast` \u2014 what identifies the component: the fill against the surround, else the weakest border side against its outside \u2014 with a 3:1 `verdict` of `pass` / `fail` / `unknown`. `declared` carries the computed colours for comparison, and `caveats` name sides with no declared border, opacity, background images and sides clipped by the viewport. Pass exactly one of `issueId` (the note's first selector) or `selector`; `includeCrop: true` adds the sampled area as an image block. The tab is brought on screen first. Hard-fail tags: `no-active-tab`, `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `debugger-not-attached`, `tab-not-visible`, `screenshot-failed`, `sample-failed`, `invalid-args`, `tab-not-found`.",
+    inputSchema: toInputSchema(sampleColorsArgs)
   },
   {
     name: "aqa_last_analysis",
@@ -33208,43 +33421,58 @@ var TOOLS = [
     inputSchema: toInputSchema(analyzePageArgs)
   },
   {
-    name: "aqa_flow_navigate",
+    name: "aqa_interact_navigate",
     description: "Navigate the active-session tab to a URL and wait for `load`. Requires an active session \u2014 call `aqa_start_session` first (you can pass the same URL there for the first step of a flow). The debugger stays attached across the navigation; the recorder picks up the new page's traffic so a downstream `aqa_analyze_page` works without re-starting. Hard-fail tags: `no-active-session`, `debugger-not-attached`, `navigation-failed: <chrome-text>`, `tab-not-found`.",
     inputSchema: toInputSchema(flowNavigateArgs)
   },
   {
-    name: "aqa_flow_click",
-    description: "Click an element on the active-session tab. Pass a `target` locator: strict `selector` is tried first, then visible `text` (+ optional `role`), then accessible `name` (+ optional `role`). Reports the strategy that actually matched as `resolved.via` plus a stable CSS path of the matched element as `resolved.selector` \u2014 store both the original `target` and the resolved path in your saved flow JSON so the runner can fall back when the page changes. Polls every ~100ms while the element is animating in or not yet visible (up to `timeoutMs`). Dispatches a real `click()` (which generates the proper mousedown/up/click sequence for site bindings). Hard-fail tags: `no-active-session`, `invalid-args`, `target-not-found`, `target-not-clickable`, `debugger-not-attached`, `tab-not-found`.",
+    name: "aqa_interact_click",
+    description: "Click an element on the active-session tab with trusted mouse events. Pass a `target` locator: strict `selector` is tried first, then visible `text` (+ optional `role`), then accessible `name` (+ optional `role`). Reports the strategy that actually matched as `resolved.via` plus a stable CSS path of the matched element as `resolved.selector` \u2014 store both the original `target` and the resolved path in your saved flow JSON so the runner can fall back when the page changes. Polls every ~100ms while the element is animating in or not yet visible (up to `timeoutMs`), then scrolls it into view, hit-tests a point inside its rendered box and sends real mouse events there \u2014 the page cannot tell them from a user's click. A click another element would receive (cookie banner, sticky header, modal backdrop) is refused as `target-obscured` with the blocker named in `detail`: dismiss or scroll it away and click again, or pass `force: true` to click the point anyway (`interceptedBy` then says what got the event). Returns the tab `url` after the click, since a click can start a navigation. Hard-fail tags: `no-active-session`, `invalid-args`, `target-not-found`, `target-not-clickable`, `target-obscured`, `dispatch-rejected` (Chrome refused the mouse event \u2014 the tab is gone or the debugger detached), `debugger-not-attached`, `tab-not-found`. Pass `frame` (`urlIncludes`, or an `index` from `aqa_list_frames`) to click inside an iframe, cross-origin ones included; the session's target frame is left alone.",
     inputSchema: toInputSchema(flowClickArgs)
   },
   {
-    name: "aqa_flow_hover",
-    description: "Hover an element on the active-session tab. Two-phase: (1) dispatches the JS `mouseover` / `mouseenter` / `mousemove` chain (React / Vue / vanilla listeners fire here), then (2) issues a CDP `Input.dispatchMouseEvent({ type: \"mouseMoved\" })` at the element's viewport-CSS center so the OS cursor moves and the CSS `:hover` pseudo-class activates. Without phase 2, pure-CSS hover dropdowns (legacy nav menus, CSS-only tooltips) won't open. Same locator + polling rules as `aqa_flow_click`. Many hover menus auto-dismiss ~300ms after the cursor stops moving, so the NEXT step should usually be `aqa_flow_wait_for` on the revealed element (or another `aqa_flow_hover` on a child of the menu) rather than a bare action. Cross-origin OOPIF targets: JS events still fire, but the real-cursor move targets root coordinates so CSS `:hover` activation isn't guaranteed for content inside foreign iframes. Hard-fail tags: `no-active-session`, `invalid-args`, `target-not-found`, `target-not-hoverable`, `debugger-not-attached`, `tab-not-found`.",
+    name: "aqa_interact_hover",
+    description: "Hover an element on the active-session tab: one trusted pointer move (`Input.dispatchMouseEvent({ type: \"mouseMoved\" })`) to a hit-tested point inside its rendered box, so the browser itself fires `mouseover` / `mouseenter` / `mousemove` (React / Vue / vanilla listeners react) and the CSS `:hover` pseudo-class activates (pure-CSS dropdowns and CSS-only tooltips open). Same locator + polling rules as `aqa_interact_click`. Many hover menus auto-dismiss ~300ms after the cursor stops moving, so the NEXT step should usually be `aqa_interact_wait_for` on the revealed element (or another `aqa_interact_hover` on a child of the menu) rather than a bare action. Cross-origin OOPIF targets: the move goes to the frame's own session, but CSS `:hover` activation inside foreign iframes isn't guaranteed. Hard-fail tags: `no-active-session`, `invalid-args`, `target-not-found`, `target-not-hoverable`, `dispatch-rejected`, `debugger-not-attached`, `tab-not-found`. Pass `frame` to hover inside an iframe (see `aqa_list_frames`).",
     inputSchema: toInputSchema(flowHoverArgs)
   },
   {
-    name: "aqa_flow_type",
-    description: "Type `value` into an `<input>` / `<textarea>` / contenteditable matched by `target`. When `clear: true` (default), the existing value is replaced. Fires `input` + `change` events afterward so framework bindings notice. Same locator + polling rules as `aqa_flow_click`. Hard-fail tags: `no-active-session`, `invalid-args`, `target-not-found`, `target-not-typable`, `debugger-not-attached`, `tab-not-found`.",
+    name: "aqa_interact_type",
+    description: "Type `value` into an `<input>` / `<textarea>` / contenteditable matched by `target`, as a keyboard would: focus is given and verified \u2014 Chrome refusing it (disabled, hidden) or the page moving it away (focus trap) fails with `target-not-focusable` instead of keying into the wrong field \u2014 then the text is inserted as trusted input. With `clear: true` (default) the existing content is selected and replaced; otherwise the text lands at the caret. `input` events fire as the text is inserted; `change` fires when focus leaves the field, exactly like a real keyboard \u2014 follow with `aqa_interact_press` of `Tab` or a click elsewhere when a binding listens to `change` only. Returns the field's `value` afterwards. Same locator + polling rules as `aqa_interact_click`. Hard-fail tags: `no-active-session`, `invalid-args`, `target-not-found`, `target-not-typable`, `target-not-focusable`, `dispatch-rejected`, `debugger-not-attached`, `tab-not-found`. Pass `frame` (`urlIncludes`, or an `index` from `aqa_list_frames`) to type into a field inside an iframe \u2014 an embedded comment editor, a payment form \u2014 cross-origin ones included; the session's target frame is left alone.",
     inputSchema: toInputSchema(flowTypeArgs)
   },
   {
-    name: "aqa_flow_select",
-    description: "Choose an `<option>` on a `<select>` matched by `target`. Pass `value` to match by `option.value`; pass `label` to match by visible text (exact-then-substring). Fires `change` afterward. Hard-fail tags: `no-active-session`, `invalid-args` (neither value nor label), `target-not-found`, `target-not-a-select`, `option-not-found`, `debugger-not-attached`, `tab-not-found`.",
+    name: "aqa_interact_select",
+    description: "Choose an `<option>` on a `<select>` matched by `target`. Pass `value` to match by `option.value`; pass `label` to match by visible text (exact-then-substring). Fires `change` afterward. Hard-fail tags: `no-active-session`, `invalid-args` (neither value nor label), `target-not-found`, `target-not-a-select`, `option-not-found`, `debugger-not-attached`, `tab-not-found`. Pass `frame` to choose inside an iframe (see `aqa_list_frames`).",
     inputSchema: toInputSchema(flowSelectArgs)
   },
   {
-    name: "aqa_flow_wait_for",
-    description: "Wait until `target` resolves AND the matched element is visible. Use after a navigation, a click that opens a panel, or a network-driven content update so subsequent steps don't race the page. Polls every ~100ms. Hard-fail tags: `no-active-session`, `invalid-args`, `wait-timed-out`, `debugger-not-attached`, `tab-not-found`.",
+    name: "aqa_interact_wait_for",
+    description: "Wait until `target` resolves AND the matched element is visible. Use after a navigation, a click that opens a panel, or a network-driven content update so subsequent steps don't race the page. Polls every ~100ms. Hard-fail tags: `no-active-session`, `invalid-args`, `wait-timed-out`, `debugger-not-attached`, `tab-not-found`. Pass `frame` to wait for an element inside an iframe (see `aqa_list_frames`).",
     inputSchema: toInputSchema(flowWaitForArgs)
   },
   {
-    name: "aqa_flow_describe_page",
-    description: `Snapshot the active-session tab: URL, title, visible landmarks, visible headings, and up to ~80 interactive elements (links, buttons, form fields) with stable CSS selectors + visible text + accessible names. Use during flow AUTHORING to ground each step on real DOM \u2014 "click the hamburger menu" picks the matching interactive element and lets you persist both the strict selector AND a text/role fallback. Don't call during a run; the saved flow JSON already carries the resolved selectors.`,
+    name: "aqa_interact_press",
+    description: "Press a key on the active-session tab through a real CDP key event (keyDown / keyUp the page cannot tell from the keyboard): `Tab` / `Shift+Tab` move focus, `Enter` and `Space` activate, `Escape` closes, arrows drive menus / tabs / sliders, `Ctrl+\u2026` / `Alt+\u2026` / `Meta+\u2026` test shortcuts. Pass `target` to focus an element first (same locator rules as `aqa_interact_click`), `repeat` to press several times. Returns `active` \u2014 the element holding focus afterwards (selector, role, accessible name, box composed into the top viewport, `focusVisible`, `tabIndex`, the shadow / frame `focusPath`; `null` when focus left the page) \u2014 plus `pageFocused` and `urlChanged`. Use it for single interactions (does Escape close the dialog, does ArrowDown move the menu, is the submenu reachable); for a whole page's Tab order use `aqa_keyboard_walk`. Hard-fail tags: `no-active-session`, `unknown-key`, `unknown-modifier`, `invalid-args`, `target-not-found`, `target-not-focusable`, `dispatch-rejected` (Chrome refused the key event \u2014 the tab is gone or the debugger detached), `debugger-not-attached`, `tab-not-found`. Pass `frame` to focus `target` inside an iframe and send the keys there (see `aqa_list_frames`).",
+    inputSchema: toInputSchema(flowPressArgs)
+  },
+  {
+    name: "aqa_describe_page",
+    description: "Snapshot the active-session tab: URL, title, visible landmarks, visible headings, and up to ~80 interactive elements (links, buttons, form fields) with stable CSS selectors + visible text + accessible names. Use during flow AUTHORING to ground each step on real DOM \u2014 \"click the hamburger menu\" picks the matching interactive element and lets you persist both the strict selector AND a text/role fallback. Don't call during a run; the saved flow JSON already carries the resolved selectors. Pass `frame` to describe an iframe's document instead of the page (see `aqa_list_frames`).",
     inputSchema: toInputSchema(flowDescribePageArgs)
   },
   {
+    name: "aqa_keyboard_walk",
+    description: "Walk the active-session tab's Tab order with real key events and report it: every stop (selector, role, accessible name, box, document position, `tabindex`), the `summary.outcome` (`left-document` = focus reached the end of the page normally, `cycled` = focus looped back to the first stop, `trapped` = focus keeps returning to a subset without reaching the end \u2014 `summary.trap` names it, `max-steps` = budget ran out), `domOrderViolations` (focus jumped to an element earlier in the DOM), `visualOrderViolations` (focus jumped clearly upwards on screen), `offscreenStops`, `focusVisibleMissing` (stops that never matched `:focus-visible`). With `indicatorSamples: N` the first N stops are screenshotted focused and blurred and the pixel difference is graded (`indicator.verdict`: `visible` = changed pixels with \u22653:1 contrast, `weak` = under 3:1, `none` = no visible change, `unknown`) \u2014 evidence for WCAG 2.4.7 / 2.4.11; `includeCrops` attaches the focused crops as images. Evidence for 2.4.3 Focus Order, 2.1.2 No Keyboard Trap, 2.4.7 Focus Visible. Starts from the top of the document unless `start` is given; leaves focus on the last stop. Sampling needs the tab painted \u2014 it activates the bound tab like `aqa_capture_element_view` and fails with `tab-not-visible` when the window is minimized or covered. Hard-fail tags: `no-active-session`, `tab-not-visible`, `focus-failed` (the `start` target did not take focus), `dispatch-rejected`, `page-unreadable`, `debugger-not-attached`, `tab-not-found`.",
+    inputSchema: toInputSchema(keyboardWalkArgs)
+  },
+  {
+    name: "aqa_emulate",
+    description: 'Emulate a viewport on the active-session tab and read a layout probe back \u2014 the evidence for WCAG 1.4.10 Reflow (`width: 320`, or `zoom: 400` on a 1280 px window), 1.4.4 Resize text (`zoom: 200`), 1.4.12 Text spacing (`textSpacing: true`) and 1.3.4 Orientation (`orientation: "portrait" | "landscape"`). `zoom` behaves like browser zoom: the CSS viewport shrinks and the device scale grows, so text really renders larger. Text spacing is applied through a CDP inspector stylesheet, never in the page DOM. The override stays on the tab until `reset: true` or the session ends \u2014 always reset before analyzing or exporting. Every call returns `diagnostics`: `viewport.horizontalScroll` / `overflowX`, `overflowing` (visible elements past the right edge), `clipped` (text cut off by `overflow: hidden`), `spilled` (text overflowing a fixed-height box), `orientationRules` (stylesheet rules keyed on the `orientation` media feature). `screenshot: true` adds the viewport image. A call with no settings just probes the current layout. Hard-fail tags: `no-active-session`, `invalid-args`, `emulation-failed`, `debugger-not-attached`, `tab-not-found`.',
+    inputSchema: toInputSchema(emulateArgs)
+  },
+  {
     name: "aqa_flow_save",
-    description: 'Persist a structured flow file to `.aqa/flows/<name>.json` under the workspace root (the client\'s first MCP root, or the server\'s cwd). The flow JSON has `name`, optional `description`, optional `startUrl`, and a `steps` array. Each step is one of: `{ action: "navigate", url }`, `{ action: "click" | "type" | "select" | "waitFor", target: { selector?, text?, role?, name? }, value?, label?, clear?, timeoutMs?, onError?: "stop" | "continue" }`, `{ action: "analyze", label?, onError?: "stop" | "continue" }`. The author pass writes this; the run pass reads it. Overwrites an existing file with the same `name`.',
+    description: 'Persist a structured flow file to `.aqa/flows/<name>.json` under the workspace root (the client\'s first MCP root, or the server\'s cwd). The flow JSON has `name`, optional `description`, optional `startUrl`, and a `steps` array. Each step is one of: `{ action: "navigate", url }`, `{ action: "click" | "hover" | "type" | "select" | "waitFor", target: { selector?, text?, role?, name? }, value?, label?, clear?, force?, timeoutMs?, onError?: "stop" | "continue" }`, `{ action: "press", key, target?, repeat?, timeoutMs?, onError? }`, `{ action: "analyze", label?, onError?: "stop" | "continue" }`. The author pass writes this; the run pass reads it. Overwrites an existing file with the same `name`.',
     inputSchema: toInputSchema(flowSaveArgs)
   },
   {
@@ -33336,6 +33564,21 @@ var FAST_TIMEOUT_MS = 1e4;
 var HANDSHAKE_WATCH_MS = 1e3;
 var HANDSHAKE_SETTLE_MS = 300;
 var fastCallOptions = { timeoutMs: FAST_TIMEOUT_MS };
+var STARTUP_WINDOW_MS = 32e3;
+var STARTUP_POLL_MS = 250;
+var bridgeListeningAt = null;
+function startupWindowRemainingMs() {
+  if (bridgeListeningAt === null) return 0;
+  return Math.max(0, bridgeListeningAt + STARTUP_WINDOW_MS - Date.now());
+}
+function startupRetryInSeconds() {
+  return Math.max(1, Math.ceil(startupWindowRemainingMs() / 1e3));
+}
+async function awaitStartupHandshake(bridge) {
+  while (!bridge.isConnected && !bridge.connectionInfo.everConnected && bridgeAuthTelemetry.authFailures === 0 && startupWindowRemainingMs() > 0) {
+    await delay2(Math.min(STARTUP_POLL_MS, startupWindowRemainingMs()));
+  }
+}
 var sessionTabId = null;
 var mcpClient = null;
 function pushSessionInfo(bridge) {
@@ -33357,7 +33600,7 @@ function isDataResponse2(r) {
 }
 function briefAnalysisResult(wrapped, digest) {
   if (!digest.ok) {
-    const sessionGone = digest.error === "session-expired" /* SESSION_EXPIRED */ || digest.error === "no-session" /* NO_SESSION */;
+    const sessionGone = digest.error === ErrorType.SESSION_EXPIRED || digest.error === ErrorType.NO_SESSION;
     return {
       analysis: wrapped.analysis,
       analysisId: wrapped.analysisId ?? null,
@@ -33403,6 +33646,14 @@ function toToolImage(base643, metadata, mimeType = "image/png") {
   return {
     content: [
       { type: "image", mimeType, data: base643 },
+      { type: "text", text: JSON.stringify(metadata, null, 2) }
+    ]
+  };
+}
+function toToolImages(images, metadata) {
+  return {
+    content: [
+      ...images.map((data) => ({ type: "image", mimeType: "image/png", data })),
       { type: "text", text: JSON.stringify(metadata, null, 2) }
     ]
   };
@@ -33554,6 +33805,7 @@ function diagnoseBridge(bridge) {
   if (info.connected) return "connected";
   if (bridgeAuthTelemetry.authFailures > 0) return "pairing-code-mismatch";
   if (info.everConnected) return "extension-disconnected";
+  if (startupWindowRemainingMs() > 0) return "starting";
   return "no-pairing-attempt";
 }
 var secondsAgo = (ts) => ts === null ? null : Math.round((Date.now() - ts) / 1e3);
@@ -33581,6 +33833,11 @@ async function bridgeSetupResult(bridge, listen, pairingCode) {
   ];
   const steps = {
     connected: connectedSteps,
+    starting: [
+      `This server bound 127.0.0.1:${port} ${secondsAgo(bridgeListeningAt) ?? "?"}s ago and the extension has not probed that port yet \u2014 it redials idle bridge ports every \u226430s, so the first connection can take up to ~30s after boot. Nothing is wrong yet; bridge-backed aqa_* tools wait for it on their own.`,
+      `Retry in ~${startupRetryInSeconds()}s. If the extension has never been paired on this machine, paste this pairing code now (Settings \u2192 Connection \u2192 MCP bridge section, then Save) so it pairs on that probe: ${pairingCode}`,
+      "Only if the status still reports no pairing attempt after that, follow the no-pairing-attempt steps (reload the extension, check the pairing-code field and the bridge toggle)."
+    ],
     "pairing-code-mismatch": [
       `The extension IS reaching this server (${bridgeAuthTelemetry.helloAttempts} pairing attempt(s), last ${secondsAgo(bridgeAuthTelemetry.lastHelloAt) ?? "?"}s ago) but its stored code does not match this server's code \u2014 it re-tries automatically, so only the code needs fixing.`,
       `Paste this pairing code into the AQA extension \u2192 Settings \u2192 Connection \u2192 MCP bridge section, and Save: ${pairingCode}`,
@@ -33600,6 +33857,8 @@ async function bridgeSetupResult(bridge, listen, pairingCode) {
   return toToolText({
     ok: true,
     diagnosis,
+    // Seconds until the startup window closes — only while `starting`.
+    retryInSeconds: diagnosis === "starting" ? startupRetryInSeconds() : void 0,
     connected: info.connected,
     everConnected: info.everConnected,
     lastClientVersion: info.lastClientVersion,
@@ -33636,6 +33895,8 @@ function bridgeUnavailableMessage(bridge, port, pairingCode) {
       const droppedSecondsAgo = secondsAgo(info.lastDisconnectedAt);
       return `The AQA extension (v${info.lastClientVersion ?? "unknown"}) disconnected from the bridge${droppedSecondsAgo === null ? "" : ` ~${droppedSecondsAgo}s ago`} \u2014 Chrome likely evicted its service worker. It reconnects automatically within ~30s; retry shortly.`;
     }
+    case "starting":
+      return `The AQA extension has not reached this server yet: it bound 127.0.0.1:${port} only ${secondsAgo(bridgeListeningAt) ?? "?"}s ago and the extension probes idle bridge ports every \u226430s. Nothing is wrong yet \u2014 retry in ~${startupRetryInSeconds()}s.`;
     default:
       return `No pairing attempt from the AQA extension has reached this server since it started (bridge on 127.0.0.1:${port}), so AQA tools can't run yet. In order of likelihood: (1) if the extension already shows the bridge enabled and paired, its service worker may be wedged behind an open-but-silent socket \u2014 reload the AQA extension at chrome://extensions and retry; (2) if the extension's pairing-code field is EMPTY it never attempts to pair \u2014 paste this code into Settings \u2192 Connection \u2192 MCP bridge section and Save:
 
@@ -33654,13 +33915,15 @@ function resolvePort(cliPort) {
 }
 var CLI_HELP = `${"UsableNet AQA Browser"} \u2014 stdio Model Context Protocol server bridged to the UsableNet AQA for Agents Chrome extension.
 
-Usage: node mcp-server.js [options]
+Usage: launcher/aqa-mcp [options]      (the plugin's launcher: finds Node.js, then runs this file)
+       node mcp-server.js [options]
 
 Options:
   --bridge-port <port>  Base port of the WebSocket bridge slot range \u2014 each
                         concurrent MCP server binds the first free port in
-                        [base, base+${BRIDGE_PLUGIN_SLOT_COUNT - 1}], and the AQA extension dials every slot
-                        (default ${BRIDGE_PLUGIN_DEFAULT_PORT}; env: AQA_BRIDGE_PORT \u2014 the flag wins)
+                        [base, base+${BRIDGE_PLUGIN_SLOT_COUNT - 1}]. The AQA extension has no port setting and
+                        dials only ${BRIDGE_PLUGIN_DEFAULT_PORT}-${BRIDGE_PLUGIN_DEFAULT_PORT + BRIDGE_PLUGIN_SLOT_COUNT - 1}, so a base outside that range never
+                        pairs (default ${BRIDGE_PLUGIN_DEFAULT_PORT}; env: AQA_BRIDGE_PORT \u2014 the flag wins)
   --workspace-dir <dir> Anchor for relative file paths (.aqa/flows, report
                         outDirs) when the MCP client does not negotiate roots
                         (Cursor, Codex). Client roots win when present; without
@@ -33697,7 +33960,7 @@ ${CLI_HELP}`);
     process.exit(0);
   }
   if (values.version === true) {
-    console.log("0.3.1");
+    console.log("0.3.3");
     process.exit(0);
   }
   const workspaceDirRaw = values["workspace-dir"] ?? process.env.AQA_WORKSPACE_DIR;
@@ -33841,7 +34104,12 @@ async function dispatch(bridge, name, rawArgs) {
       const args = withSessionTab(parseArgs(captureElementViewArgs, rawArgs, name));
       const result = await bridge.call("bridge:captureElementView", args, fastCallOptions);
       if (!result.ok || !result.image) {
-        return toToolText(result);
+        return toToolText(
+          result.error === "tab-not-visible" ? {
+            ...result,
+            hint: "The bound tab is not being painted. The extension already switched to it in its window, but the page stayed hidden \u2014 its Chrome window is minimized or fully covered by another app (or the tab could not be activated). Ask the user to bring that Chrome window on screen with the tab showing, then retry the capture."
+          } : result
+        );
       }
       const { image, ...metadata } = result;
       return toToolImage(image.pngBase64, {
@@ -33869,6 +34137,28 @@ async function dispatch(bridge, name, rawArgs) {
       const args = withSessionTab(parseArgs(getElementContextArgs, rawArgs, name));
       return toToolText(await bridge.call("bridge:getElementContext", args, fastCallOptions));
     }
+    case "aqa_list_images": {
+      const args = withSessionTab(parseArgs(listImagesArgs, rawArgs, name));
+      return toToolText(await bridge.call("bridge:listImages", args, fastCallOptions));
+    }
+    case "aqa_list_listeners": {
+      const args = withSessionTab(parseArgs(listListenersArgs, rawArgs, name));
+      return toToolText(await bridge.call("bridge:listListeners", args));
+    }
+    case "aqa_sample_colors": {
+      const args = withSessionTab(parseArgs(sampleColorsArgs, rawArgs, name));
+      const result = await bridge.call("bridge:sampleColors", args, fastCallOptions);
+      if (!result.ok || result.crop === void 0) {
+        return toToolText(
+          result.error === "tab-not-visible" ? {
+            ...result,
+            hint: "The bound tab is not being painted. The extension already switched to it in its window, but the page stayed hidden \u2014 its Chrome window is minimized or fully covered by another app (or the tab could not be activated). Ask the user to bring that Chrome window on screen with the tab showing, then retry."
+          } : result
+        );
+      }
+      const { crop, ...metadata } = result;
+      return toToolImage(crop.pngBase64, { ...metadata, crop: { pngWidth: crop.pngWidth, pngHeight: crop.pngHeight } });
+    }
     case "aqa_last_analysis": {
       const args = withSessionTab(parseArgs(lastAnalysisArgs, rawArgs, name));
       const wrapped = await bridge.call("bridge:lastAnalysis", args, fastCallOptions);
@@ -33894,7 +34184,7 @@ async function dispatch(bridge, name, rawArgs) {
       if (!isDataResponse2(raw)) {
         const errorMsg = "error" in raw && typeof raw.error === "string" ? raw.error : "unknown error";
         throw new Error(
-          errorMsg === "no-cached-analysis" /* NO_CACHED_ANALYSIS */ ? "No cached analysis for this tab. Call `aqa_analyze_page` first, or pass `force: true`." : `Cannot export report \u2014 evaluation failed: ${errorMsg}`
+          errorMsg === ErrorType.NO_CACHED_ANALYSIS ? "No cached analysis for this tab. Call `aqa_analyze_page` first, or pass `force: true`." : `Cannot export report \u2014 evaluation failed: ${errorMsg}`
         );
       }
       const includeManualReview = args.includeManualReview === true;
@@ -33921,7 +34211,7 @@ async function dispatch(bridge, name, rawArgs) {
       const evaluationForReport = filtersActive ? { ...raw, notes: filteredNotes } : raw;
       const selectors = Array.from(
         new Set(
-          filteredNotes.filter((n) => n.status === "needsFix" /* NEEDS_FIX */).filter((n) => {
+          filteredNotes.filter((n) => n.status === NotesStatus.NEEDS_FIX).filter((n) => {
             const tag = (n.tagName || "").toUpperCase();
             return tag !== "HTML" && tag !== "BODY";
           }).map((n) => n.selectors[0]).filter((s) => typeof s === "string" && s.length > 0)
@@ -33971,9 +34261,9 @@ async function dispatch(bridge, name, rawArgs) {
         stats: {
           totalNotes: filteredNotes.length,
           totalNotesBeforeFilter: filtersActive ? raw.notes.length : void 0,
-          needsFix: filteredNotes.filter((n) => n.status === "needsFix" /* NEEDS_FIX */).length,
-          checkManually: filteredNotes.filter((n) => n.status === "checkManually" /* MANUALLY */).length,
-          reviewedOk: filteredNotes.filter((n) => n.status === "reviewedOk" /* DISMISSED */).length,
+          needsFix: filteredNotes.filter((n) => n.status === NotesStatus.NEEDS_FIX).length,
+          checkManually: filteredNotes.filter((n) => n.status === NotesStatus.MANUALLY).length,
+          reviewedOk: filteredNotes.filter((n) => n.status === NotesStatus.DISMISSED).length,
           placeholdersCount: placeholders.length,
           selectorsRequested: selectors.length,
           selectorsResolved: Object.keys(render.elementCrops).length,
@@ -34003,33 +34293,62 @@ async function dispatch(bridge, name, rawArgs) {
         missing: result.missing
       });
     }
-    case "aqa_flow_navigate": {
+    case "aqa_interact_navigate": {
       const args = withSessionTab(parseArgs(flowNavigateArgs, rawArgs, name));
       return toToolText(await bridge.call("bridge:flowNavigate", args));
     }
-    case "aqa_flow_click": {
+    case "aqa_list_frames": {
+      const args = withSessionTab(parseArgs(listFramesArgs, rawArgs, name));
+      return toToolText(await bridge.call("bridge:listFrames", args, fastCallOptions));
+    }
+    case "aqa_interact_click": {
       const args = withSessionTab(parseArgs(flowClickArgs, rawArgs, name));
       return toToolText(await bridge.call("bridge:flowClick", args));
     }
-    case "aqa_flow_hover": {
+    case "aqa_interact_hover": {
       const args = withSessionTab(parseArgs(flowHoverArgs, rawArgs, name));
       return toToolText(await bridge.call("bridge:flowHover", args));
     }
-    case "aqa_flow_type": {
+    case "aqa_interact_type": {
       const args = withSessionTab(parseArgs(flowTypeArgs, rawArgs, name));
       return toToolText(await bridge.call("bridge:flowType", args));
     }
-    case "aqa_flow_select": {
+    case "aqa_interact_select": {
       const args = withSessionTab(parseArgs(flowSelectArgs, rawArgs, name));
       return toToolText(await bridge.call("bridge:flowSelect", args));
     }
-    case "aqa_flow_wait_for": {
+    case "aqa_interact_wait_for": {
       const args = withSessionTab(parseArgs(flowWaitForArgs, rawArgs, name));
       return toToolText(await bridge.call("bridge:flowWaitFor", args));
     }
-    case "aqa_flow_describe_page": {
+    case "aqa_describe_page": {
       const args = withSessionTab(parseArgs(flowDescribePageArgs, rawArgs, name));
       return toToolText(await bridge.call("bridge:flowDescribePage", args, fastCallOptions));
+    }
+    case "aqa_interact_press": {
+      const args = withSessionTab(parseArgs(flowPressArgs, rawArgs, name));
+      return toToolText(await bridge.call("bridge:flowPress", args));
+    }
+    case "aqa_keyboard_walk": {
+      const args = withSessionTab(parseArgs(keyboardWalkArgs, rawArgs, name));
+      const result = await bridge.call("bridge:keyboardWalk", args);
+      if (!result.ok || !result.stops) return toToolText(result);
+      const crops = [];
+      const stops = result.stops.map((stop) => {
+        if (stop.indicator?.crop === void 0) return stop;
+        const { crop, ...indicator } = stop.indicator;
+        crops.push(crop.pngBase64);
+        return { ...stop, indicator: { ...indicator, cropImageIndex: crops.length - 1 } };
+      });
+      const metadata = { ...result, stops };
+      return crops.length > 0 ? toToolImages(crops, metadata) : toToolText(metadata);
+    }
+    case "aqa_emulate": {
+      const args = withSessionTab(parseArgs(emulateArgs, rawArgs, name));
+      const result = await bridge.call("bridge:emulate", args, fastCallOptions);
+      if (!result.ok || !result.image) return toToolText(result);
+      const { image, ...metadata } = result;
+      return toToolImage(image.pngBase64, { ...metadata, image: { pngWidth: image.pngWidth, pngHeight: image.pngHeight } });
     }
     case "aqa_flow_save": {
       const args = parseArgs(flowSaveArgs, rawArgs, name);
@@ -34139,6 +34458,7 @@ async function main() {
     protocolVersion: BRIDGE_PLUGIN_PROTOCOL_VERSION,
     auth: bridgeAuthHooks(bridgeSecret)
   });
+  bridgeListeningAt = Date.now();
   console.error(`${LOG} bridge listening on 127.0.0.1:${port} (slot ${slot} of ${BRIDGE_PLUGIN_SLOT_COUNT})`);
   console.error(
     `${LOG} bridge pairing code${created ? " (new)" : ""}: ${bridgeSecret}
@@ -34149,7 +34469,7 @@ ${LOG} paste it into the AQA extension \u2192 Settings \u2192 Connection \u2192 
       console.error(
         `${LOG} no extension handshake 45s after boot (bridge on 127.0.0.1:${port}). Most often the extension isn't paired yet \u2014 paste this pairing code into the AQA extension \u2192 Settings \u2192 Connection \u2192 MCP bridge section, then reload the extension:
 ${LOG}   pairing code: ${bridgeSecret}
-${LOG} If it's already paired, check that Chrome with the AQA extension is running on THIS machine, that the extension's bridge port matches ${port}, and that this session isn't inside a sandboxed VM (e.g. a cloud or containerized agent environment) where host Chrome can't reach the bridge.`
+${LOG} If it's already paired, check that Chrome with the AQA extension is running on THIS machine, that port ${port} is inside the range the extension dials (${BRIDGE_PLUGIN_DEFAULT_PORT}-${BRIDGE_PLUGIN_DEFAULT_PORT + BRIDGE_PLUGIN_SLOT_COUNT - 1}), and that this session isn't inside a sandboxed VM (e.g. a cloud or containerized agent environment) where host Chrome can't reach the bridge.`
       );
     }
   }, 45e3);
@@ -34201,7 +34521,7 @@ ${LOG} If it's already paired, check that Chrome with the AQA extension is runni
     {
       name: SERVER_NAME,
       title: "UsableNet AQA Browser",
-      version: "0.3.1",
+      version: "0.3.3",
       ...!"https://github.com/usablenet/usablenet-aqabrowser-mcp".includes("example.com") ? { websiteUrl: "https://github.com/usablenet/usablenet-aqabrowser-mcp" } : {},
       // MCP 2025-11-25 server-info `icons`: the same 128px mark the extension
       // and the plugin cards use, inlined at build time (data: URI is the
@@ -34248,8 +34568,9 @@ ${LOG} If it's already paired, check that Chrome with the AQA extension is runni
     if (name === "aqa_setup_bridge") {
       return bridgeSetupResult(bridge, { port, slot }, bridgeSecret);
     }
-    if (!BRIDGELESS_TOOLS.has(name) && !bridge.isConnected) {
-      throw new Error(bridgeUnavailableMessage(bridge, port, bridgeSecret));
+    if (!BRIDGELESS_TOOLS.has(name)) {
+      await awaitStartupHandshake(bridge);
+      if (!bridge.isConnected) throw new Error(bridgeUnavailableMessage(bridge, port, bridgeSecret));
     }
     return dispatch(bridge, name, args);
   });

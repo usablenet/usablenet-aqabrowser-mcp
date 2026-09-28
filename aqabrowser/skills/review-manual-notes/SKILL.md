@@ -23,13 +23,28 @@ again per page or image. Respect a request for recommendations without saving.
    until null before deciding the group is fully inventoried.
 3. A group shares a review question, not a verdict. Read its methodology once and
    follow its actions for each note. Collect the specific evidence it requires with
-   `aqa_get_element_info`, `aqa_capture_element_view`, `aqa_get_image_bytes` and
-   `aqa_get_element_context` as applicable. Cached context does not establish live
+   `aqa_get_element_info`, `aqa_capture_element_view`, `aqa_get_image_bytes`,
+   `aqa_get_element_context`, `aqa_list_images`, `aqa_list_listeners`,
+   `aqa_sample_colors`, `aqa_emulate`, `aqa_keyboard_walk` and
+   `aqa_interact_press` as applicable. Cached context does not establish live
    identity, rendered contrast, visibility or image meaning. If navigation or DOM
    changes break identity, obtain fresh evidence/analysis; a matching selector or
    analysisId alone is insufficient. Inspect image bytes for depiction and
    surrounding context for purpose; use rendered screenshots for compositing and
-   visibility. Avoid spawning a live-browser verifier per note.
+   visibility. Inventory a page's images once with `aqa_list_images` instead of
+   probing them one by one. For reflow, zoom, text-spacing and orientation
+   questions use `aqa_emulate` and reset it before the next analysis or export;
+   for focus order, keyboard traps and focus visibility use `aqa_keyboard_walk`,
+   and `aqa_interact_press` for single key interactions such as Escape or the arrow
+   keys. For character key shortcuts, pointer cancellation and pointer gestures
+   (2.1.4 / 2.5.2 / 2.5.1) inventory the page's listeners once with
+   `aqa_list_listeners` and read the flagged handlers' previews — the flags are
+   hints, and a `framework-dispatcher` handler means "handlers found, not
+   verified", never "no shortcuts". For the non-text contrast of a border or a
+   control's boundary (1.4.11) sample the rendered pixels with `aqa_sample_colors`
+   rather than trusting declared colours; its `verdict` is against 3:1 and its
+   `caveats` say what could not be read. Avoid spawning a live-browser verifier
+   per note.
 4. Reuse observations only when element identity, surrounding meaning, rendered
    state and the tested condition are equivalent. Never pass every instance of a
    rule or every matching selector automatically. If a method lacks a usable

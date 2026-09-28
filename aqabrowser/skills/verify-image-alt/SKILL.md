@@ -42,7 +42,7 @@ When `outcome === 'tools-unavailable'`, the subagent spawned without its MCP too
 
 When `outcome === 'inconclusive'`, name the specific signal that's missing or noisy (or the methodology step that couldn't be grounded) and offer one concrete follow-up:
 
-- `resource-not-cached` — the image wasn't fetched while the AQA session was recording. The user can re-run analysis after a hard refresh so the recorder picks up the bytes this time. **Do not** suggest fetching the URL out-of-band; the resource may not even be available.
+- `resource-not-cached` — the image wasn't fetched while the AQA session was recording, and the element wasn't painted either (otherwise the tool falls back to the rendered pixels, `source: "rendered"`). The user can re-run analysis after a hard refresh so the recorder picks up the bytes this time, or bring the tab on screen. **Do not** suggest fetching the URL out-of-band; the resource may not even be available.
 - `image-not-loaded` — the image errored or is still loading. Suggest the user check the network panel for that URL.
 - `image-source-empty` — the `<img>` has no usable `src` / `currentSrc`, so there is nothing to look up. If the page has since loaded the image, suggest a re-analyze.
 - `inline-svg-not-supported` / `data-uri-not-supported` — out of scope for v1; this agent only handles HTML `<img>` with a cacheable network resource.
