@@ -154,7 +154,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     initialize)
       requested=$(printf '%s' "$line" | sed -nE 's/.*"protocolVersion"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
       [ -n "$requested" ] && protocol=$requested
-      reply "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"protocolVersion\":\"$protocol\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":$server_name_json,\"version\":\"0.3.3\"},\"instructions\":$instructions_json}}"
+      reply "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"protocolVersion\":\"$protocol\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":$server_name_json,\"version\":\"0.3.4\"},\"instructions\":$instructions_json}}"
       ;;
     tools/list)
       reply "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"tools\":[{\"name\":\"aqa_setup_bridge\",\"description\":$tool_description_json,\"inputSchema\":{\"type\":\"object\",\"properties\":{}}}]}}"

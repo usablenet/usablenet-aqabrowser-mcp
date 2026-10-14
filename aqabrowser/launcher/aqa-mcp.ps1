@@ -71,7 +71,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
       Send-Reply @{ jsonrpc = '2.0'; id = $request.id; result = @{
         protocolVersion = $protocol
         capabilities = @{ tools = @{} }
-        serverInfo = @{ name = $serverName; version = '0.3.3' }
+        serverInfo = @{ name = $serverName; version = '0.3.4' }
         instructions = $instructions
       } }
     }

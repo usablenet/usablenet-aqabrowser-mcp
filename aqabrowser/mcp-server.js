@@ -10873,6 +10873,7 @@ var ErrorType = /* @__PURE__ */ ((ErrorType2) => {
   ErrorType2["PAGE_UNREADABLE"] = "page-unreadable";
   ErrorType2["PAGE_NOT_TESTABLE"] = "page-not-testable";
   ErrorType2["FRAME_NOT_TESTABLE"] = "frame-not-testable";
+  ErrorType2["OLDER_EXTENSION"] = "older-extension";
   ErrorType2["ANALYZE_PAGE"] = "analyze-page";
   ErrorType2["CONNECTION"] = "connection-error";
   ErrorType2["NO_ACTIVE_TAB"] = "no-active-tab";
@@ -32898,6 +32899,9 @@ var issueFiltersSchema = {
 };
 var emptyArgs = external_exports4.object({}).strict();
 var tabIdArg = external_exports4.number().int().positive().describe("Optional target tab id (from `aqa_list_tabs`). Defaults to the session's bound tab; passing it targets that tab for this call only \u2014 the binding does not move.").optional();
+function rawSelectorDescription(description, noteArg = "`issueId`") {
+  return `${description} Resolved in the session's target frame; for an AQA note pass ${noteArg} instead, which resolves in the frame the analysis ran on.`;
+}
 var hasFlowTarget = (t) => t.selector !== void 0 || t.text !== void 0 || t.name !== void 0;
 var FLOW_TARGET_MESSAGE = "target must include at least one of `selector`, `text`, or `name`";
 var glossaryArgs = external_exports4.object({
@@ -32960,14 +32964,14 @@ var getIssueArgs = external_exports4.object({
 }).strict();
 var getElementInfoArgs = external_exports4.object({
   issueId: external_exports4.string().min(1).describe("Issue id (`note.id`). Drives the cached a11y context. Mutually exclusive with `selector`.").optional(),
-  selector: external_exports4.string().min(1).describe("CSS selector for the element to inspect. Mutually exclusive with `issueId`. The cached a11y block is omitted on this path.").optional(),
+  selector: external_exports4.string().min(1).describe(rawSelectorDescription("CSS selector for the element to inspect. Mutually exclusive with `issueId`. The cached a11y block is omitted on this path.")).optional(),
   tabId: tabIdArg
 }).strict().refine((d) => d.issueId === void 0 !== (d.selector === void 0), {
   message: "pass exactly one of `issueId` or `selector`"
 });
 var captureElementViewArgs = external_exports4.object({
   issueId: external_exports4.string().min(1).describe("Issue id (`note.id`). Resolves to the issue's first selector + attaches the cached a11y block. Mutually exclusive with `selector`.").optional(),
-  selector: external_exports4.string().min(1).describe("CSS selector for the element to capture. Mutually exclusive with `issueId`. Cached a11y block is omitted on this path.").optional(),
+  selector: external_exports4.string().min(1).describe(rawSelectorDescription("CSS selector for the element to capture. Mutually exclusive with `issueId`. Cached a11y block is omitted on this path.")).optional(),
   mode: external_exports4.enum(["crop", "full-page"]).describe('`crop` (default) = element + halo. `full-page` = post-scroll viewport with a red rect outline + corner crosshairs over the element (best for "is something on top of it?").').optional(),
   padding: external_exports4.enum(["tight", "normal", "wide"]).describe('Halo size for `crop` mode. `tight` = minimal (just the element); `normal` (default) = ~400 PNG-px floor; `wide` = ~800 PNG-px floor (whole neighborhood). Ignored when `mode: "full-page"`.').optional(),
   tabId: tabIdArg
@@ -32976,14 +32980,14 @@ var captureElementViewArgs = external_exports4.object({
 });
 var getImageBytesArgs = external_exports4.object({
   issueId: external_exports4.string().min(1).describe("Issue id (`note.id`). Resolves through the cached evaluation to the issue's first selector. Mutually exclusive with `selector`.").optional(),
-  selector: external_exports4.string().min(1).describe("CSS selector for the `<img>` element. Mutually exclusive with `issueId`.").optional(),
+  selector: external_exports4.string().min(1).describe(rawSelectorDescription("CSS selector for the `<img>` element. Mutually exclusive with `issueId`.")).optional(),
   tabId: tabIdArg
 }).strict().refine((d) => d.issueId === void 0 !== (d.selector === void 0), {
   message: "pass exactly one of `issueId` or `selector`"
 });
 var getElementContextArgs = external_exports4.object({
   issueId: external_exports4.string().min(1).describe("Issue id (`note.id`). Resolves through the cached evaluation to the issue's first selector. Mutually exclusive with `selector`.").optional(),
-  selector: external_exports4.string().min(1).describe("CSS selector for the element to inspect. Mutually exclusive with `issueId`.").optional(),
+  selector: external_exports4.string().min(1).describe(rawSelectorDescription("CSS selector for the element to inspect. Mutually exclusive with `issueId`.")).optional(),
   tabId: tabIdArg
 }).strict().refine((d) => d.issueId === void 0 !== (d.selector === void 0), {
   message: "pass exactly one of `issueId` or `selector`"
@@ -33017,7 +33021,7 @@ var rankIssuesArgs = external_exports4.object({
 }).strict();
 var highlightElementsArgs = external_exports4.object({
   issueIds: external_exports4.array(external_exports4.string()).describe("Issue ids (`note.id` values). Selectors + severities sourced from the cached evaluation.").optional(),
-  selectors: external_exports4.array(external_exports4.string()).describe("Additional raw selectors. Severity defaults to medium for outline color.").optional(),
+  selectors: external_exports4.array(external_exports4.string()).describe(rawSelectorDescription("Additional raw selectors. Severity defaults to medium for outline color.", "its id in `issueIds`")).optional(),
   style: external_exports4.enum(["auto", "spotlight", "outline"]).describe("`auto` (default), `spotlight`, or `outline`.").optional(),
   tabId: tabIdArg
 }).strict();
@@ -33150,7 +33154,7 @@ var listListenersArgs = external_exports4.object({
 }).strict();
 var sampleColorsArgs = external_exports4.object({
   issueId: external_exports4.string().min(1).describe("Issue id (`note.id`). Resolves through the cached evaluation to the issue's first selector. Mutually exclusive with `selector`.").optional(),
-  selector: external_exports4.string().min(1).describe("CSS selector for the element to sample. Mutually exclusive with `issueId`.").optional(),
+  selector: external_exports4.string().min(1).describe(rawSelectorDescription("CSS selector for the element to sample. Mutually exclusive with `issueId`.")).optional(),
   includeCrop: external_exports4.boolean().describe("Attach the sampled area (the element plus a halo) as a PNG image block. Default false.").optional(),
   tabId: tabIdArg
 }).strict().refine((d) => d.issueId === void 0 !== (d.selector === void 0), {
@@ -33347,27 +33351,27 @@ var TOOLS = [
   },
   {
     name: "aqa_get_element_info",
-    description: "Read the LIVE element off the page: full attribute list (including the raw `tabindex` attribute), untruncated outerHTML, live tagName, hasText \u2014 plus, on the `issueId` path, the cached a11y block (`a11y.*`: role, accessible name + description, heading level, `tabOrderPosition` \u2014 1-based keyboard-tab-order position, NOT the `tabindex` attribute \u2014 focused flag, contrast, visibility). Pass exactly one of `issueId` (resolves through the cached evaluation) or `selector` (live-only, no a11y block \u2014 for related elements like labels or ARIA references). Call this before proposing any fix or answering about attributes / accessible name / role / tab order \u2014 `aqa_get_issue` alone carries none of that. Everything here is DOM-declared, not rendered: what the user actually SEES (visible label / text, overlay coverage) needs `aqa_capture_element_view`, and what an `<img>` DEPICTS needs `aqa_get_image_bytes` \u2014 never assert a DOM-derived value as the visible/depicted one. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `no-active-tab`, `invalid-args`, `tab-not-found`.",
+    description: "Read the LIVE element off the page: full attribute list (including the raw `tabindex` attribute), untruncated outerHTML, live tagName, hasText \u2014 plus, on the `issueId` path, the cached a11y block (`a11y.*`: role, accessible name + description, heading level, `tabOrderPosition` \u2014 1-based keyboard-tab-order position, NOT the `tabindex` attribute \u2014 focused flag, contrast, visibility). Pass exactly one of `issueId` (resolves through the cached evaluation) or `selector` (live-only, no a11y block \u2014 for related elements like labels or ARIA references). Call this before proposing any fix or answering about attributes / accessible name / role / tab order \u2014 `aqa_get_issue` alone carries none of that. Everything here is DOM-declared, not rendered: what the user actually SEES (visible label / text, overlay coverage) needs `aqa_capture_element_view`, and what an `<img>` DEPICTS needs `aqa_get_image_bytes` \u2014 never assert a DOM-derived value as the visible/depicted one. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `evaluation-frame-gone` (the page no longer has the frame the analysis ran on \u2014 re-run `aqa_analyze_page`, do not hunt for another selector), `no-active-tab`, `invalid-args`, `tab-not-found`.",
     inputSchema: toInputSchema(getElementInfoArgs)
   },
   {
     name: "aqa_capture_element_view",
-    description: 'Capture a screenshot of an AQA-flagged element in its rendered context \u2014 the pixels answer what the user SEES, which no DOM-derived field can. Returns BOTH a `type: "image"` content block (PNG) AND a `type: "text"` metadata block (rect, viewport, dpr, `intersectsViewport`, `nonZeroSize`, cached `a11y` on the `issueId` path). Pass exactly one of `issueId` or `selector`. `mode: "crop"` (default, with `padding`) = the element\'s readable neighborhood \u2014 for reading the visible label / text / focus indicator off the image (Label in Name family); `mode: "full-page"` = the post-scroll viewport with the element outlined \u2014 for element-compositing verdicts (covered by a sticky banner / modal, off-viewport, not painted; see the verify-visibility workflow). The element is scrolled into view first, which needs the tab painted: when the bound tab sits hidden behind another tab in its window, the extension switches to it before capturing (say so if the user wonders why the tab changed); `tab-not-visible` means it stayed hidden \u2014 the window is minimized or fully covered \u2014 relay the `hint` in the result and retry once the user has the tab on screen. Screenshots cost vision tokens \u2014 call on demand for a specific issue, not in bulk. WRONG tool for judging image alt text: a screenshot shows the rendered element with page chrome on top, not the image itself \u2014 use `aqa_get_image_bytes` + `aqa_get_element_context`. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `debugger-not-attached`, `tab-not-visible`, `screenshot-failed`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
+    description: 'Capture a screenshot of an AQA-flagged element in its rendered context \u2014 the pixels answer what the user SEES, which no DOM-derived field can. Returns BOTH a `type: "image"` content block (PNG) AND a `type: "text"` metadata block (rect, viewport, dpr, `intersectsViewport`, `nonZeroSize`, cached `a11y` on the `issueId` path). Pass exactly one of `issueId` or `selector`. `mode: "crop"` (default, with `padding`) = the element\'s readable neighborhood \u2014 for reading the visible label / text / focus indicator off the image (Label in Name family); `mode: "full-page"` = the post-scroll viewport with the element outlined \u2014 for element-compositing verdicts (covered by a sticky banner / modal, off-viewport, not painted; see the verify-visibility workflow). The element is scrolled into view first, which needs the tab painted: when the bound tab sits hidden behind another tab in its window, the extension switches to it before capturing (say so if the user wonders why the tab changed); `tab-not-visible` means it stayed hidden \u2014 the window is minimized or fully covered \u2014 relay the `hint` in the result and retry once the user has the tab on screen. Screenshots cost vision tokens \u2014 call on demand for a specific issue, not in bulk. WRONG tool for judging image alt text: a screenshot shows the rendered element with page chrome on top, not the image itself \u2014 use `aqa_get_image_bytes` + `aqa_get_element_context`. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `evaluation-frame-gone`, `debugger-not-attached`, `tab-not-visible`, `screenshot-failed`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
     inputSchema: toInputSchema(captureElementViewArgs)
   },
   {
     name: "aqa_get_image_bytes",
-    description: 'Pull the pixels of an `<img>` element \u2014 they answer what the image DEPICTS, which the DOM `alt` string and `src` URL cannot (they only say what the alt CLAIMS and where the image points). The extension first scrolls the image into view and waits up to 3 s for a lazy load, then serves the bytes from the session\'s network-recorder cache (`source: "cache"`, original MIME type \u2014 JPEG / PNG / WebP / GIF / \u2026). When the cache has nothing for the URL (fetched before recording, blob / auth-gated / expired URL), it falls back to a PNG crop of the element\'s rendered box (`source: "rendered"`, with `rendered.note`): what the user sees at the displayed size, overlays and CSS crops included \u2014 judge the alt against it, but say in the verdict that the original file was not available. **Never re-fetches** \u2014 no out-of-band download. Returns BOTH a `type: "image"` content block AND a `type: "text"` metadata block (url, `source`, intrinsic w/h, `fromSrcset`, byte length). Resolves the browser\'s chosen `currentSrc` before the cache lookup, so the bytes are the ones the user actually sees. Scope: HTML `<img>` only; inline `<svg>` and `data:` URIs hard-fail with their own tags. Pass exactly one of `issueId` or `selector`. Image bytes cost vision tokens \u2014 call on demand, not in bulk; use `aqa_list_images` to triage a page first. For the full alt-meaningfulness verdict pair with `aqa_get_element_context` (see the verify-image-alt workflow). Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `not-an-image-element`, `image-source-empty`, `image-not-loaded`, `data-uri-not-supported`, `inline-svg-not-supported`, `resource-not-cached` (only when the element is not painted either), `debugger-not-attached`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
+    description: 'Pull the pixels of an `<img>` element \u2014 they answer what the image DEPICTS, which the DOM `alt` string and `src` URL cannot (they only say what the alt CLAIMS and where the image points). The extension first scrolls the image into view and waits up to 3 s for a lazy load, then serves the bytes from the session\'s network-recorder cache (`source: "cache"`, original MIME type \u2014 JPEG / PNG / WebP / GIF / \u2026). When the cache has nothing for the URL (fetched before recording, blob / auth-gated / expired URL), it falls back to a PNG crop of the element\'s rendered box (`source: "rendered"`, with `rendered.note`): what the user sees at the displayed size, overlays and CSS crops included \u2014 judge the alt against it, but say in the verdict that the original file was not available. **Never re-fetches** \u2014 no out-of-band download. Returns BOTH a `type: "image"` content block AND a `type: "text"` metadata block (url, `source`, intrinsic w/h, `fromSrcset`, byte length). Resolves the browser\'s chosen `currentSrc` before the cache lookup, so the bytes are the ones the user actually sees. Scope: HTML `<img>` only; inline `<svg>` and `data:` URIs hard-fail with their own tags. Pass exactly one of `issueId` or `selector`. Image bytes cost vision tokens \u2014 call on demand, not in bulk; use `aqa_list_images` to triage a page first. For the full alt-meaningfulness verdict pair with `aqa_get_element_context` (see the verify-image-alt workflow). Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `evaluation-frame-gone`, `not-an-image-element`, `image-source-empty`, `image-not-loaded`, `data-uri-not-supported`, `inline-svg-not-supported`, `resource-not-cached` (only when the element is not painted either), `debugger-not-attached`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
     inputSchema: toInputSchema(getImageBytesArgs)
   },
   {
     name: "aqa_get_element_context",
-    description: 'Walk an `<img>` element\'s surroundings and return a structured context payload: decorative signals (`alt=""` / `role="presentation"` / `role="none"` / `aria-hidden` incl. ancestors), nearest `<a href>` / `<button>` wrapper with its accessible name (\u2192 image is functional), `<figure>`/`<figcaption>` text, nearest landmark ancestor, resolved `aria-labelledby` / `aria-describedby` text, sibling text (\u2264200 chars) \u2014 plus a deterministic `inferredRole` rollup (`decorative | functional | informative | ambiguous`) with a one-line `inferredRoleReason`. Companion to `aqa_get_image_bytes`: that answers what the image SHOWS, this answers what JOB it does on the page; reconcile both for alt-meaningfulness verdicts (see the verify-image-alt workflow). Text-only response. Pass exactly one of `issueId` or `selector`. Also callable alone for the decorative-vs-informative judgement. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `debugger-not-attached`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
+    description: 'Walk an `<img>` element\'s surroundings and return a structured context payload: decorative signals (`alt=""` / `role="presentation"` / `role="none"` / `aria-hidden` incl. ancestors), nearest `<a href>` / `<button>` wrapper with its accessible name (\u2192 image is functional), `<figure>`/`<figcaption>` text, nearest landmark ancestor, resolved `aria-labelledby` / `aria-describedby` text, sibling text (\u2264200 chars) \u2014 plus a deterministic `inferredRole` rollup (`decorative | functional | informative | ambiguous`) with a one-line `inferredRoleReason`. Companion to `aqa_get_image_bytes`: that answers what the image SHOWS, this answers what JOB it does on the page; reconcile both for alt-meaningfulness verdicts (see the verify-image-alt workflow). Text-only response. Pass exactly one of `issueId` or `selector`. Also callable alone for the decorative-vs-informative judgement. Hard-fail tags: `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `evaluation-frame-gone`, `debugger-not-attached`, `no-active-tab`, `invalid-args`, `tab-not-found`.',
     inputSchema: toInputSchema(getElementContextArgs)
   },
   {
     name: "aqa_list_images",
-    description: 'Inventory every image-like element on the bound tab in one call: `<img>`, inline `<svg>`, `<input type="image">`, `role="img"`, and with `includeBackground` CSS background images. Each row carries the declared `alt` (`null` = attribute absent, `""` = decorative), `role` / `ariaLabel` / `title`, `ariaHidden`, the deterministic `inferredRole` (`decorative` / `functional` / `informative` / `ambiguous`, same rubric as `aqa_get_element_context`) with its reason, the link / button `wrapper`, the rendered box, `rendered` / `inViewport`, `loaded` and `lazy`, `natural` size, `cached` (the recorder holds the bytes, so `aqa_get_image_bytes` returns the original), and `issueIds` \u2014 the cached AQA notes for 1.1.1 / 1.4.5 / 1.4.1 / 2.4.4 that point at the element or its wrapper. `summary` counts the page: missing vs empty alt, informative images without a usable alt, functional images whose control has no name, not loaded, not cached, with issues. Use it to triage image questions page-wide before probing single images; paginate with `offset` / `limit`; `truncated` says the page-side walk hit its caps. Hard-fail tags: `no-active-tab`, `debugger-not-attached`, `page-unreadable`, `tab-not-found`.',
+    description: 'Inventory every image-like element on the bound tab in one call: `<img>`, inline `<svg>`, `<input type="image">`, `role="img"`, and with `includeBackground` CSS background images. Each row carries the declared `alt` (`null` = attribute absent, `""` = decorative), `role` / `ariaLabel` / `title`, `ariaHidden`, the deterministic `inferredRole` (`decorative` / `functional` / `informative` / `ambiguous`, same rubric as `aqa_get_element_context`) with its reason, the link / button `wrapper`, the rendered box, `rendered` / `inViewport`, `loaded` and `lazy`, `natural` size, `cached` (the recorder holds the bytes, so `aqa_get_image_bytes` returns the original), and `issueIds` \u2014 the cached AQA notes for 1.1.1 / 1.4.5 / 1.4.1 / 2.4.4 that point at the element or its wrapper (only when the session\'s target frame, which is what is inventoried, is the frame the analysis ran on). `summary` counts the page: missing vs empty alt, informative images without a usable alt, functional images whose control has no name, not loaded, not cached, with issues. Use it to triage image questions page-wide before probing single images; paginate with `offset` / `limit`; `truncated` says the page-side walk hit its caps. Hard-fail tags: `no-active-tab`, `debugger-not-attached`, `page-unreadable`, `tab-not-found`.',
     inputSchema: toInputSchema(listImagesArgs)
   },
   {
@@ -33377,7 +33381,7 @@ var TOOLS = [
   },
   {
     name: "aqa_sample_colors",
-    description: "Measure the rendered \u2014 not declared \u2014 colours of one element for WCAG 1.4.11 Non-text Contrast (a field border, a control's boundary, a focus ring drawn as a border): scrolls it into view, screenshots the viewport and reads the pixels. Per side: the median colour of the border band and of the 2 px strips just outside and inside it, with their contrast ratios. Overall: the element's fill, the ring around it, `contrastFillSurround`, and `boundaryContrast` \u2014 what identifies the component: the fill against the surround, else the weakest border side against its outside \u2014 with a 3:1 `verdict` of `pass` / `fail` / `unknown`. `declared` carries the computed colours for comparison, and `caveats` name sides with no declared border, opacity, background images and sides clipped by the viewport. Pass exactly one of `issueId` (the note's first selector) or `selector`; `includeCrop: true` adds the sampled area as an image block. The tab is brought on screen first. Hard-fail tags: `no-active-tab`, `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `debugger-not-attached`, `tab-not-visible`, `screenshot-failed`, `sample-failed`, `invalid-args`, `tab-not-found`.",
+    description: "Measure the rendered \u2014 not declared \u2014 colours of one element for WCAG 1.4.11 Non-text Contrast (a field border, a control's boundary, a focus ring drawn as a border): scrolls it into view, screenshots the viewport and reads the pixels. Per side: the median colour of the border band and of the 2 px strips just outside and inside it, with their contrast ratios. Overall: the element's fill, the ring around it, `contrastFillSurround`, and `boundaryContrast` \u2014 what identifies the component: the fill against the surround, else the weakest border side against its outside \u2014 with a 3:1 `verdict` of `pass` / `fail` / `unknown`. `declared` carries the computed colours for comparison, and `caveats` name sides with no declared border, opacity, background images and sides clipped by the viewport. Pass exactly one of `issueId` (the note's first selector) or `selector`; `includeCrop: true` adds the sampled area as an image block. The tab is brought on screen first. Hard-fail tags: `no-active-tab`, `no-cached-analysis`, `issue-not-found`, `issue-has-no-selector`, `selector-not-found`, `evaluation-frame-gone`, `debugger-not-attached`, `tab-not-visible`, `screenshot-failed`, `sample-failed`, `invalid-args`, `tab-not-found`.",
     inputSchema: toInputSchema(sampleColorsArgs)
   },
   {
@@ -33407,7 +33411,7 @@ var TOOLS = [
   },
   {
     name: "aqa_highlight_elements",
-    description: 'Visually highlight elements on the inspected page. Pass `issueIds` (resolved against the cached evaluation) and/or raw `selectors`. `style: "auto"` (default) \u2192 spotlight for 1, outlines for 2+. Outlines persist until `aqa_clear_highlights` or page navigation; the spotlight also auto-dismisses as soon as the user\'s mouse enters the page (or the element scrolls out of view).',
+    description: "Visually highlight elements on the inspected page. Pass `issueIds` (resolved against the cached evaluation, in the frame the analysis ran on) and/or raw `selectors` (resolved in the session's target frame). `style: \"auto\"` (default) \u2192 spotlight for 1, outlines for 2+. Outlines persist until `aqa_clear_highlights` or page navigation; the spotlight also auto-dismisses as soon as the user's mouse enters the page (or the element scrolls out of view). Fails with `evaluation-frame-gone`, nothing drawn, when `issueIds` are given and the page no longer has the frame the analysis ran on.",
     inputSchema: toInputSchema(highlightElementsArgs)
   },
   {
@@ -33422,7 +33426,7 @@ var TOOLS = [
   },
   {
     name: "aqa_interact_navigate",
-    description: "Navigate the active-session tab to a URL and wait for `load`. Requires an active session \u2014 call `aqa_start_session` first (you can pass the same URL there for the first step of a flow). The debugger stays attached across the navigation; the recorder picks up the new page's traffic so a downstream `aqa_analyze_page` works without re-starting. Hard-fail tags: `no-active-session`, `debugger-not-attached`, `navigation-failed: <chrome-text>`, `tab-not-found`.",
+    description: "Navigate the active-session tab to a URL and wait for `load`. Requires an active session \u2014 call `aqa_start_session` first (you can pass the same URL there for the first step of a flow). The debugger stays attached across the navigation; the recorder picks up the new page's traffic so a downstream `aqa_analyze_page` works without re-starting. `timeoutMs` bounds the wait: `loaded: false` means the navigation started but the page was still loading when it ran out \u2014 it may finish shortly, and `aqa_interact_wait_for` on an element of the new page confirms it. A fragment link reports `loaded: true` at once, its document having loaded long ago. Hard-fail tags: `no-active-session`, `debugger-not-attached`, `navigation-failed: <chrome-text>`, `tab-not-found`.",
     inputSchema: toInputSchema(flowNavigateArgs)
   },
   {
@@ -33564,6 +33568,12 @@ var FAST_TIMEOUT_MS = 1e4;
 var HANDSHAKE_WATCH_MS = 1e3;
 var HANDSHAKE_SETTLE_MS = 300;
 var fastCallOptions = { timeoutMs: FAST_TIMEOUT_MS };
+var WAIT_BRIDGE_OVERHEAD_MS = 15e3;
+var waitCallOptions = (waitMs, defaultWaitMs) => ({
+  timeoutMs: (waitMs ?? defaultWaitMs) + WAIT_BRIDGE_OVERHEAD_MS
+});
+var DEFAULT_NAVIGATE_WAIT_MS = 3e4;
+var DEFAULT_SELECTOR_WAIT_MS = 1e4;
 var STARTUP_WINDOW_MS = 32e3;
 var STARTUP_POLL_MS = 250;
 var bridgeListeningAt = null;
@@ -33960,7 +33970,7 @@ ${CLI_HELP}`);
     process.exit(0);
   }
   if (values.version === true) {
-    console.log("0.3.3");
+    console.log("0.3.4");
     process.exit(0);
   }
   const workspaceDirRaw = values["workspace-dir"] ?? process.env.AQA_WORKSPACE_DIR;
@@ -34295,7 +34305,7 @@ async function dispatch(bridge, name, rawArgs) {
     }
     case "aqa_interact_navigate": {
       const args = withSessionTab(parseArgs(flowNavigateArgs, rawArgs, name));
-      return toToolText(await bridge.call("bridge:flowNavigate", args));
+      return toToolText(await bridge.call("bridge:flowNavigate", args, waitCallOptions(args.timeoutMs, DEFAULT_NAVIGATE_WAIT_MS)));
     }
     case "aqa_list_frames": {
       const args = withSessionTab(parseArgs(listFramesArgs, rawArgs, name));
@@ -34319,7 +34329,7 @@ async function dispatch(bridge, name, rawArgs) {
     }
     case "aqa_interact_wait_for": {
       const args = withSessionTab(parseArgs(flowWaitForArgs, rawArgs, name));
-      return toToolText(await bridge.call("bridge:flowWaitFor", args));
+      return toToolText(await bridge.call("bridge:flowWaitFor", args, waitCallOptions(args.timeoutMs, DEFAULT_SELECTOR_WAIT_MS)));
     }
     case "aqa_describe_page": {
       const args = withSessionTab(parseArgs(flowDescribePageArgs, rawArgs, name));
@@ -34521,7 +34531,7 @@ ${LOG} If it's already paired, check that Chrome with the AQA extension is runni
     {
       name: SERVER_NAME,
       title: "UsableNet AQA Browser",
-      version: "0.3.3",
+      version: "0.3.4",
       ...!"https://github.com/usablenet/usablenet-aqabrowser-mcp".includes("example.com") ? { websiteUrl: "https://github.com/usablenet/usablenet-aqabrowser-mcp" } : {},
       // MCP 2025-11-25 server-info `icons`: the same 128px mark the extension
       // and the plugin cards use, inlined at build time (data: URI is the

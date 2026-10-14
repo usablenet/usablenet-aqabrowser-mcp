@@ -3,6 +3,7 @@ if (Number(process.versions.node.split('.')[0]) < 20) { console.error("[UsableNe
 import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);
 
 // src/scripts/print-config.ts
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -1320,7 +1321,8 @@ var USAGE = `Usage: node print-config.js [host] [--bridge-port <port>] [--node]
   --node                Register \`node mcp-server.js\` instead of the launcher,
                         for a host that does not run it (a Windows host that
                         does not resolve the .cmd). Needs Node.js ${"20"}+
-                        on that host's PATH.
+                        on that host's PATH. Implied inside the npm package
+                        (${"@usablenet-public/aqabrowser-plugin"}), which ships no launcher.
 `;
 function print(text) {
   process.stdout.write(`${text}
@@ -1334,6 +1336,14 @@ ${USAGE}`);
 }
 function shellQuote(arg) {
   return /^[\w./:@=-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", String.raw`'\''`)}'`;
+}
+function isNpmPackage(dir) {
+  try {
+    const parsed = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8"));
+    return typeof parsed === "object" && parsed !== null && "name" in parsed && parsed.name === "@usablenet-public/aqabrowser-plugin";
+  } catch {
+    return false;
+  }
 }
 function parseCli() {
   let values;
@@ -1372,7 +1382,22 @@ function tomlKey(key) {
 function shellCommand(server2) {
   return [server2.command, ...server2.args].map(shellQuote).join(" ");
 }
-function buildSnippet(host2, { server: server2, distDir: distDir2, bridgePort: bridgePort2 }) {
+function fullPluginInstall(host2, { distDir: distDir2, fromNpm: fromNpm2 }) {
+  const add = host2 === "claude-code" ? "/plugin marketplace add" : "codex plugin marketplace add";
+  const install = host2 === "claude-code" ? "/plugin install" : "codex plugin add";
+  if (fromNpm2) {
+    return `This package was installed from an npm registry; the plugin hosts install it from a marketplace catalog whose entry names the package as an npm source (\`"source": {"source": "npm", "package": "${"@usablenet-public/aqabrowser-plugin"}"}\`; the registry's own README has the entry):
+
+${add} <the catalog repository>
+${install} aqa@${"UsableNet"}`;
+  }
+  const catalog = host2 === "claude-code" ? "local marketplace" : "local Codex marketplace (`.agents/plugins/marketplace.json`)";
+  return `This dist folder doubles as a ${catalog}:
+
+${add} ${shellQuote(distDir2)}
+${install} aqa@${"UsableNet"}`;
+}
+function buildSnippet(host2, { server: server2, distDir: distDir2, bridgePort: bridgePort2, fromNpm: fromNpm2 }) {
   const mcpServersJson = JSON.stringify({ mcpServers: { ["UsableNet AQA Browser"]: server2 } }, null, 2);
   switch (host2) {
     case "json":
@@ -1404,10 +1429,7 @@ After registering, verify the written entry: \`command\` must be ${JSON.stringif
 Recommended: also install the AQA plugin (skills Cursor loads on demand) by COPYING this whole dist folder to ~/.cursor/plugins/local/${"aqabrowser"} \u2014 real files, NOT a symlink (Cursor rejects symlinks that point outside plugins/local); re-copy after rebuilds. It carries a \`.cursor-plugin/plugin.json\` manifest and the \`skills/\` directory Cursor auto-discovers. Without it the agent gets the raw tools only.`;
     }
     case "claude-code":
-      return `Claude Code \u2014 prefer installing the full plugin (skills + subagents included). This dist folder doubles as a local marketplace:
-
-/plugin marketplace add ${distDir2}
-/plugin install aqa@${"UsableNet"}
+      return `Claude Code \u2014 prefer installing the full plugin (skills + subagents included). ${fullPluginInstall("claude-code", { distDir: distDir2, fromNpm: fromNpm2 })}
 
 Or for development: claude --plugin-dir ${shellQuote(distDir2)}
 
@@ -1418,10 +1440,7 @@ claude mcp add ${shellQuote("UsableNet AQA Browser")} --scope user -- ${shellCom
       const toml = `[mcp_servers.${tomlKey("UsableNet AQA Browser")}]
 command = ${JSON.stringify(server2.command)}
 args = [${server2.args.map((a) => JSON.stringify(a)).join(", ")}]`;
-      return `Codex (CLI + ChatGPT desktop app) \u2014 prefer installing the full plugin (skills included). This dist folder doubles as a local Codex marketplace (\`.agents/plugins/marketplace.json\`):
-
-codex plugin marketplace add ${shellQuote(distDir2)}
-codex plugin add aqa@${"UsableNet"}
+      return `Codex (CLI + ChatGPT desktop app) \u2014 prefer installing the full plugin (skills included). ${fullPluginInstall("codex", { distDir: distDir2, fromNpm: fromNpm2 })}
 
 Then start a NEW Codex session \u2014 plugins load at session start. The plugin runs the server on the default bridge port (Codex has no per-plugin settings), so for a non-default port register the server manually instead. Codex negotiates no MCP roots and runs the server from inside the plugin folder, so relative report/flow paths anchor at $HOME (~/reports, ~/.aqa/flows) \u2014 pass absolute paths to place them elsewhere.
 
@@ -1445,14 +1464,19 @@ Recommended: also install the AQA skills (workflow guidance Copilot loads on dem
 }
 var { host, bridgePort, useNode } = parseCli();
 var distDir = path.dirname(fileURLToPath(import.meta.url));
+var fromNpm = isNpmPackage(distDir);
 var portArgs = bridgePort === void 0 ? [] : ["--bridge-port", String(bridgePort)];
 var launcherPath = path.join(
   distDir,
   ...process.platform === "win32" ? "launcher\\aqa-mcp.cmd".split("\\") : "launcher/aqa-mcp".split("/")
 );
-var server = useNode ? { command: "node", args: [path.join(distDir, "mcp-server.js"), ...portArgs] } : { command: launcherPath, args: portArgs };
-print(`${"UsableNet AQA Browser"} v${"0.3.3"} \u2014 ${shellCommand(server)}`);
-if (!useNode) {
+var server = useNode || fromNpm ? { command: "node", args: [path.join(distDir, "mcp-server.js"), ...portArgs] } : { command: launcherPath, args: portArgs };
+print(`${"UsableNet AQA Browser"} v${"0.3.4"} \u2014 ${shellCommand(server)}`);
+if (fromNpm) {
+  print(
+    `This is the npm package ${"@usablenet-public/aqabrowser-plugin"}: the server runs on the Node.js ${"20"}+ the host fetched it with, no launcher between. With the registry in ~/.npmrc, any MCP client can register \`npx -y ${"@usablenet-public/aqabrowser-plugin"}\` instead of the absolute path below.`
+  );
+} else if (!useNode) {
   print(
     `The launcher finds a Node.js ${"20"}+ for the server (PATH, then the usual install locations \u2014 desktop apps start with a bare PATH) and, when there is none, answers the agent with the install steps instead of failing silently. Pass --node to register \`node mcp-server.js\` directly.`
   );
@@ -1462,7 +1486,7 @@ for (const h of selected) {
   print(`
 \u2500\u2500\u2500 ${h} ${"\u2500".repeat(Math.max(0, 60 - h.length))}`);
   print(`
-${buildSnippet(h, { server, distDir, bridgePort })}`);
+${buildSnippet(h, { server, distDir, bridgePort, fromNpm })}`);
 }
 print(
   `

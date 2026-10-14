@@ -3,7 +3,7 @@
 Drive the UsableNet AQA for Agents Chrome extension from your coding agent. Start QA sessions, run accessibility evaluations, summarize results, and export annotated HTML reports — with the AQA extension installed in the user's regular Chrome.
 
 Works with **Claude Code**, **Codex**, **Cursor**, **VS Code Copilot**, and
-any other MCP client. Current version: `0.3.3`.
+any other MCP client. Current version: `0.3.4`.
 
 ## What you need
 
@@ -236,3 +236,21 @@ Code they are also slash commands:
 | `/aqa:start-session` | Start inspecting a tab (the current one, a specific one, or a new one opened at a URL); later requests target that tab. |
 | `/aqa:verify-image-alt` | Check whether an image's alt text really describes what the image shows (WCAG 1.1.1). |
 | `/aqa:verify-visibility` | Check whether a flagged element is really visible on screen, not hidden behind a banner or off the page. |
+
+## Licensing & Architecture Boundaries
+
+This repository contains the open-source core elements of our system, which operates alongside our proprietary browser components.
+
+### ⚖️ Open-Source Component
+
+The source code contained strictly within this public repository is licensed under the **Apache License 2.0**. This grant includes permissive rights for usage, modification, and distribution, alongside explicit contributor patent protections as detailed in the `LICENSE` file.
+
+### 🔒 Proprietary Component ("AQA for Agents")
+
+To fully utilize this repository, the software connects via secure interfaces to our official browser extension: **AQA for Agents**.
+
+Please be aware of the following distinct boundaries:
+
+- **Ownership & Licensing:** The **AQA for Agents** Chrome extension, its associated authentication APIs, and backend server infrastructure are closed-source, proprietary intellectual property owned exclusively by us. They are **not** governed by the Apache 2.0 license.
+- **Usage Restrictions:** Access to the **AQA for Agents** extension requires valid, proprietary authentication credentials. Modifying or forking this open-source repository does not grant rights, licenses, or access to the extension's proprietary features, security systems, or backend infrastructure.
+- **Trademark Protection:** In accordance with Section 6 of the Apache License 2.0, no rights are granted to use the trade names, trademarks, service marks, or product names of the authors, including **"AQA for Agents"**, except as required for reasonable and customary use in describing the origin of the work.
