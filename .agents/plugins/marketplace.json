@@ -1,0 +1,21 @@
+{
+  "name": "UsableNet",
+  "interface": {
+    "displayName": "UsableNet"
+  },
+  "plugins": [
+    {
+      "name": "aqa",
+      "source": {
+        "source": "npm",
+        "package": "@usablenet-public/usablenet-aqabrowser-mcp",
+        "registry": "https://usablenet.jfrog.io/artifactory/api/npm/npm-usablenet-public/"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
